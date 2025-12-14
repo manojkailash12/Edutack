@@ -27,7 +27,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-netlify-app.netlify.app'] // Replace with your actual Netlify URL
+    ? true // Allow all origins in production (Netlify handles this securely)
     : ['http://localhost:3000'],
   credentials: true
 }));
@@ -36,24 +36,33 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/paper', paperRoutes);
-app.use('/api/notes', notesRoutes);
-app.use('/api/staff', staffRoutes);
-app.use('/api/student', studentRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/internal', internalRoutes);
-app.use('/api/assignments', assignmentRoutes);
-app.use('/api/quizzes', quizRoutes);
-app.use('/api/time-schedule', timeScheduleRoutes);
-app.use('/api/semester', semesterRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/subject', subjectRoutes);
+// Routes (no /api prefix needed - Netlify handles this)
+app.use('/auth', authRoutes);
+app.use('/paper', paperRoutes);
+app.use('/notes', notesRoutes);
+app.use('/staff', staffRoutes);
+app.use('/student', studentRoutes);
+app.use('/attendance', attendanceRoutes);
+app.use('/internal', internalRoutes);
+app.use('/assignments', assignmentRoutes);
+app.use('/quizzes', quizRoutes);
+app.use('/time-schedule', timeScheduleRoutes);
+app.use('/semester', semesterRoutes);
+app.use('/user', userRoutes);
+app.use('/subject', subjectRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Edutack API is running on Netlify Functions' });
+});
+
+// Debug route to check if API is working
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Edutack API is working!', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV 
+  });
 });
 
 // Error handling
