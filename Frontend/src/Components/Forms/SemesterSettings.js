@@ -3,6 +3,7 @@ import axios from "../../config/api/axios";
 import UserContext from "../../Hooks/UserContext";
 import { toast } from "react-toastify";
 import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaSave, FaTimes } from "react-icons/fa";
+import ConfirmModal from "../Layouts/ConfirmModal";
 
 const SemesterSettings = () => {
   const { user } = useContext(UserContext);
@@ -16,6 +17,12 @@ const SemesterSettings = () => {
     endDate: '',
     description: '',
     academicYear: '2024-2025'
+  });
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null
   });
 
   const semesters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
@@ -96,11 +103,16 @@ const SemesterSettings = () => {
   };
 
   // Handle delete
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this semester setting?')) {
-      return;
-    }
+  const handleDelete = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Semester Setting',
+      message: 'Are you sure you want to delete this semester setting? This action cannot be undone.',
+      onConfirm: () => performDelete(id)
+    });
+  };
 
+  const performDelete = async (id) => {
     try {
       await axios.delete(`/semester/settings/${id}`, {
         data: { userId: user._id }
@@ -340,6 +352,18 @@ const SemesterSettings = () => {
           <li>• Example: Semester starting 02-06-2025 to ending 02-12-2025 allows attendance only in this period</li>
         </ul>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </main>
   );
 };
