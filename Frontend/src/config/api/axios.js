@@ -3,8 +3,8 @@ import axios from "axios";
 // Determine the base URL based on environment
 const getBaseURL = () => {
   if (process.env.NODE_ENV === 'production') {
-    // Use Render backend for production
-    return "https://edutack-backend.onrender.com";
+    // Use deployed backend URL (update this after deploying backend)
+    return process.env.REACT_APP_API_URL || 'https://your-railway-url.up.railway.app';
   }
   // Use localhost for development
   return "http://localhost:3500";
