@@ -1,0 +1,361 @@
+[{
+  "_id": {
+    "$oid": "687b3188d60cc3768383b463"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Deep Learning",
+  "sections": [
+    "SIGMA",
+    "OMEGA",
+    "ZETA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b0caaa1c56ab7840caf73"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b31c3d60cc3768383b46a"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Deep Learning",
+  "sections": [
+    "BETA",
+    "GAMMA",
+    "EPSILON",
+    "DELTA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4e8da1c56ab7840caf22"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b31eed60cc3768383b471"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Big Data Analysis",
+  "sections": [
+    "SIGMA",
+    "OMEGA",
+    "ZETA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4fe3a1c56ab7840caf3e"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b3217d60cc3768383b478"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Big Data Analysis",
+  "sections": [
+    "ALPHA",
+    "BETA",
+    "GAMMA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4fafa1c56ab7840caf3a"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b323fd60cc3768383b47f"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Big Data Analysis",
+  "sections": [
+    "DELTA",
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4f2da1c56ab7840caf32"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b327ed60cc3768383b49e"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Software Quality and Testing",
+  "sections": [
+    "ALPHA",
+    "BETA",
+    "GAMMA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4f4fa1c56ab7840caf36"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b32c7d60cc3768383b4a5"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Software Quality and Testing",
+  "sections": [
+    "DELTA",
+    "SIGMA",
+    "OMEGA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b0c6fa1c56ab7840caf6f"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b32ded60cc3768383b4ac"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Software Quality and Testing",
+  "sections": [
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4dada1c56ab7840caf1e"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b3316d60cc3768383b4d1"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Software Quality and Testing",
+  "sections": [
+    "ZETA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4dada1c56ab7840caf1e"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b334dd60cc3768383b4dc"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "MuleSoft Anypoint Studio",
+  "sections": [
+    "ALPHA",
+    "BETA",
+    "GAMMA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b0d0ea1c56ab7840caf7b"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b351ad60cc3768383b52d"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "MuleSoft Anypoint Studio",
+  "sections": [
+    "DELTA",
+    "SIGMA",
+    "OMEGA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b3393d60cc3768383b4e4"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b3548d60cc3768383b534"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "MuleSoft Anypoint Studio",
+  "sections": [
+    "ZETA",
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b0cd8a1c56ab7840caf77"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b3b148119fd8978072344"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Startup Innovation and Entrepreneurship",
+  "sections": [
+    "ALPHA",
+    "BETA",
+    "GAMMA",
+    "DELTA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b39ba8119fd89780722f3"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b3b3e8119fd8978072365"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Startup Innovation and Entrepreneurship",
+  "sections": [
+    "SIGMA",
+    "OMEGA",
+    "ZETA",
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b39858119fd89780722ef"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b6932c594c8b8a7cf9e62"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "CRT",
+  "sections": [
+    "ALPHA",
+    "BETA",
+    "GAMMA",
+    "DELTA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b68f4c594c8b8a7cf9e50"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b6946c594c8b8a7cf9e69"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "CRT",
+  "sections": [
+    "SIGMA",
+    "OMEGA",
+    "ZETA",
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b68c5c594c8b8a7cf9e4c"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b6a31c594c8b8a7cf9eb6"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Deep Learning",
+  "sections": [
+    "ALPHA"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4dada1c56ab7840caf1e"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687b6a4fc594c8b8a7cf9ebd"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "NON CRT",
+  "sections": [
+    "ALPHA",
+    "BETA",
+    "GAMMA",
+    "DELTA",
+    "OMEGA",
+    "SIGMA",
+    "ZETA",
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687b69bfc594c8b8a7cf9e8b"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "687c9d1d350eef7c6fb507cd"
+  },
+  "department": "Computer Science and Engineering (CSE)",
+  "semester": "VII",
+  "year": "2025-2026",
+  "paper": "Test Paper for EPSILON",
+  "sections": [
+    "EPSILON"
+  ],
+  "students": [],
+  "teacher": {
+    "$oid": "687a4dada1c56ab7840caf1e"
+  },
+  "__v": 0
+}]
