@@ -2,7 +2,7 @@ services:
   - type: web
     name: edutack-backend
     env: node
-    buildCommand: cd Backend && npm install
+    buildCommand: npm install --production
     startCommand: cd Backend && npm start
     envVars:
       - key: NODE_ENV
@@ -10,9 +10,7 @@ services:
       - key: PORT
         value: 10000
       - key: MONGODB_URI
-        fromDatabase:
-          name: edutack-db
-          property: connectionString
+        value: mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority
       - key: EMAIL_USER
         value: libroflow8@gmail.com
       - key: EMAIL_PASS
