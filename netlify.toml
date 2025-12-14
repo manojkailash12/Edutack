@@ -9,7 +9,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "/.netlify/functions/api/:splat"
   status = 200
 
 [[redirects]]
@@ -18,4 +18,4 @@
   status = 200
 
 [functions]
-  directory = "../Backend/netlify/functions"
+  directory = "netlify/functions"
