@@ -245,7 +245,7 @@ const TimeScheduleForm = () => {
       });
       
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      // const pageHeight = doc.internal.pageSize.getHeight(); // Unused for now
       
       const sectionKeys = Object.keys(timetable);
       
