@@ -1,7 +1,7 @@
 [build]
   base = "Frontend"
   publish = "build"
-  command = "CI=false npm run build"
+  command = "cd .. && npm install && cd Frontend && CI=false npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
