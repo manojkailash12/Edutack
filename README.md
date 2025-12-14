@@ -1,4 +1,4 @@
-# 🎓 Edutack - College Management System
+# 🎓 Edutrack - College Management System
 
 A comprehensive college-based data management system built with React and Node.js, featuring quiz management, attendance tracking, assignment submission, and more.
 
