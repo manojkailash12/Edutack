@@ -3,8 +3,8 @@ import axios from "axios";
 // Determine the base URL based on environment
 const getBaseURL = () => {
   if (process.env.NODE_ENV === 'production') {
-    // Use the same domain for production (Netlify Functions)
-    return window.location.origin + '/api';
+    // Use Render backend for production
+    return "https://edutack-backend.onrender.com";
   }
   // Use localhost for development
   return "http://localhost:3500";
