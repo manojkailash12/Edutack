@@ -14,28 +14,40 @@ mongoose.connection.on('disconnected', () => {
 });
 
 const connectDB = async (retryCount = 0) => {
-  const maxRetries = 3;
+  const maxRetries = 4;
   try {
-    // Try different connection string formats
-    const dbUri = process.env.MONGODB_URI || "mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority";
+    const dbUri = process.env.MONGODB_URI || "mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/edutrack?retryWrites=true&w=majority&appName=Edutrack";
+    
     await mongoose.connect(dbUri, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      serverSelectionTimeoutMS: 10000, // Increased timeout to 10s
+      socketTimeoutMS: 45000,
+      family: 4, // Use IPv4, skip trying IPv6
+      bufferCommands: false,
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      maxIdleTimeMS: 30000,
+      serverSelectionRetryDelayMS: 2000, // Retry every 2 seconds
     });
-    console.log("✅ Connected to MongoDB Atlas");
+    console.log("✅ Connected to MongoDB Atlas successfully");
   } catch (err) {
     console.error(`❌ MongoDB connection error (attempt ${retryCount + 1}/${maxRetries + 1}):`, err.message);
     
     if (retryCount < maxRetries) {
-      console.log(`🔄 Retrying connection in 2 seconds...`);
-      setTimeout(() => connectDB(retryCount + 1), 2000);
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff, max 10s
+      console.log(`🔄 Retrying connection in ${delay/1000} seconds...`);
+      setTimeout(() => connectDB(retryCount + 1), delay);
     } else {
       console.error("💥 Failed to connect to MongoDB after all retries");
-      console.error("Possible solutions:");
-      console.error("1. Check your internet connection");
-      console.error("2. Verify MongoDB Atlas cluster is running");
-      console.error("3. Check if your IP is whitelisted in MongoDB Atlas");
-      console.error("4. Verify the connection string is correct");
+      console.error("\n🔧 Troubleshooting steps:");
+      console.error("1. 🌐 Check your internet connection");
+      console.error("2. ⚡ Verify MongoDB Atlas cluster is running and not paused");
+      console.error("3. 🔒 Check if your IP is whitelisted in MongoDB Atlas Network Access");
+      console.error("4. 🔑 Verify username/password in connection string");
+      console.error("5. 🏠 Try connecting from a different network");
+      console.error("6. 📞 Check if your ISP blocks MongoDB Atlas ports");
+      
+      // Don't exit the process, let the app continue without DB for now
+      console.log("⚠️  Server will continue running without database connection");
     }
   }
 };

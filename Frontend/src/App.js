@@ -36,6 +36,16 @@ import QuizTakeForm from "./Components/Forms/QuizTakeForm";
 import QuizResults from "./Components/Queries/QuizResults";
 import QuizReview from "./Components/Queries/QuizReview";
 import SubmissionViewer from "./Components/Queries/SubmissionViewer";
+import ManageStaff from "./Components/Queries/ManageStaff";
+import ManageStudents from "./Components/Queries/ManageStudents";
+import ManageCourse from "./Components/Queries/ManageCourse";
+import ViewAttendance from "./Components/Queries/ViewAttendance";
+import StudentFeedback from "./Components/Queries/StudentFeedback";
+import StaffFeedback from "./Components/Queries/StaffFeedback";
+import StudentLeave from "./Components/Queries/StudentLeave";
+import StaffLeave from "./Components/Queries/StaffLeave";
+import AddSubject from "./Components/Forms/AddSubject";
+import ManageSubject from "./Components/Queries/ManageSubject";
 
 
 // forms
@@ -130,6 +140,18 @@ function App() {
           <Route path="quizzes/:quizId/review" element={<QuizReview />} />
           <Route path="quizzes/:quizId/edit" element={<QuizForm />} />
           <Route path="quizzes/add-quiz" element={<QuizForm />} />
+          <Route path="add_staff" element={<StaffForm />} />
+          <Route path="manage_staff" element={<ManageStaff />} />
+          <Route path="add_student" element={<StudentForm />} />
+          <Route path="manage_students" element={<ManageStudents />} />
+          <Route path="manage_course" element={<ManageCourse />} />
+          <Route path="add_subject" element={<AddSubject />} />
+          <Route path="manage_subject" element={<ManageSubject />} />
+          <Route path="view_attendance" element={<ViewAttendance />} />
+          <Route path="student_feedback" element={<StudentFeedback />} />
+          <Route path="staff_feedback" element={<StaffFeedback />} />
+          <Route path="student_leave" element={<StudentLeave />} />
+          <Route path="staff_leave" element={<StaffLeave />} />
         </Route>
       </Route>
     )

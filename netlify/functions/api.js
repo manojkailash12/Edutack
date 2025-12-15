@@ -6,8 +6,22 @@ const cookieParser = require('cookie-parser');
 // Set environment variables for production
 process.env.NODE_ENV = 'production';
 
-// Import database connection
-require('../../Backend/config/dbConn');
+// Import and initialize database connection
+const connectDB = require('../../Backend/config/dbConn');
+
+// Initialize database connection
+let dbConnected = false;
+const initDB = async () => {
+  if (!dbConnected) {
+    try {
+      await connectDB();
+      dbConnected = true;
+      console.log('✅ Database connected for Netlify Functions');
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+    }
+  }
+};
 
 // Import routes
 const authRoutes = require('../../Backend/routes/authRoutes');
@@ -45,12 +59,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize database on first request
+app.use(async (req, res, next) => {
+  await initDB();
+  next();
+});
+
 // Health check route
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'Edutack API is working!', 
+    message: 'Edutack API is working on Netlify!', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
+    platform: 'Netlify Functions',
+    database: dbConnected ? 'Connected' : 'Disconnected',
     path: req.path
   });
 });

@@ -104,7 +104,11 @@ ehthumbs.db
 Thumbs.db
 
 # Uploads directory (contains user uploaded files)
-Backend/uploads/
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+
+# Netlify
+.netlify/
 
 # Database files
 *.db

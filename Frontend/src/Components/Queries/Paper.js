@@ -177,17 +177,7 @@ const Paper = () => {
     papersToShowLength: papersToShow?.length || 0
   });
 
-  // Debug function to check database state
-  const debugDatabase = async () => {
-    try {
-      const response = await axios.get('/paper/debug/all');
-      console.log('=== DATABASE DEBUG ===');
-      console.log('Database state:', response.data);
-      alert('Check console for database debug info');
-    } catch (err) {
-      console.error('Debug error:', err);
-    }
-  };
+
 
   return (
     <main className="paper">
@@ -195,13 +185,7 @@ const Paper = () => {
         Papers
       </h2>
       
-      {/* Temporary debug button */}
-      <button 
-        onClick={debugDatabase}
-        className="mb-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-      >
-        🐛 Debug Database (Check Console)
-      </button>
+
       {profileWarning && (
         <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded border border-yellow-300">
           {profileWarning}

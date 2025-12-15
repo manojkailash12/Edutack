@@ -1,3 +1,4 @@
+# Netlify Configuration for Edutack - Complete App Deployment
 [build]
   base = "Frontend"
   publish = "build"
@@ -6,8 +7,55 @@
 [build.environment]
   NODE_VERSION = "18"
   CI = "false"
+  GENERATE_SOURCEMAP = "false"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # Increase timeout for complex operations like PDF generation
+  timeout = 30
+
+# API Routes - Direct all API calls to our serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Health check endpoint
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/api/health"
+  status = 200
+
+# Auth endpoints
+[[redirects]]
+  from = "/auth/*"
+  to = "/.netlify/functions/api/auth/:splat"
+  status = 200
+
+# SPA fallback - Must be last
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With"

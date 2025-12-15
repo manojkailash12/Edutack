@@ -7,6 +7,7 @@ import { PiStudentThin, PiUserThin, PiSpinnerGapBold } from "react-icons/pi";
 import CircleDesign from "../Layouts/CircleDesign";
 import ErrorStrip from "../ErrorStrip";
 import ForgotPasswordForm from './ForgotPasswordForm';
+import ApiHealthCheck from '../Debug/ApiHealthCheck';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -211,6 +212,7 @@ const Login = () => {
         <Navigate to="./dash" />
       )}
       {showForgot && <ForgotPasswordForm onClose={() => setShowForgot(false)} />}
+      {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
     </>
   );
 };
