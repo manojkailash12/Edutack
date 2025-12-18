@@ -5,10 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server",
-    "dev": "node --watch server",
-    "test:production": "node testProduction.js",
-    "debug:env": "node checkEnv.js",
-    "debug:production": "node productionDebug.js"
+    "dev": "node --watch server"
   },
   "keywords": [],
   "author": "",
