@@ -4,7 +4,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 
 // Create payslips directory if it doesn't exist
-const payslipsDir = path.join(__dirname, '../uploads/payslips');
+const payslipsDir = path.join('/tmp/uploads/payslips');
 if (!fs.existsSync(payslipsDir)) {
   fs.mkdirSync(payslipsDir, { recursive: true });
 }

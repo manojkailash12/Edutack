@@ -4,23 +4,23 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
-// Create uploads and assets directories if they don't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+// Create uploads and assets directories in /tmp for Netlify Functions
+const uploadsDir = path.join('/tmp', 'uploads');
 const profilePhotosDir = path.join(uploadsDir, 'profile-photos');
 const certificatesDir = path.join(uploadsDir, 'certificates');
-const assetsDir = path.join(__dirname, 'assets');
+const assetsDir = path.join('/tmp', 'assets');
 
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 if (!fs.existsSync(profilePhotosDir)) {
-  fs.mkdirSync(profilePhotosDir);
+  fs.mkdirSync(profilePhotosDir, { recursive: true });
 }
 if (!fs.existsSync(certificatesDir)) {
-  fs.mkdirSync(certificatesDir);
+  fs.mkdirSync(certificatesDir, { recursive: true });
 }
 if (!fs.existsSync(assetsDir)) {
-  fs.mkdirSync(assetsDir);
+  fs.mkdirSync(assetsDir, { recursive: true });
 }
 
 const app = express();
@@ -44,8 +44,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files from uploads directory in /tmp
+app.use('/uploads', express.static(path.join('/tmp', 'uploads')));
 
 // Serve static files from public directory with proper MIME types
 app.use("/", express.static("public", {

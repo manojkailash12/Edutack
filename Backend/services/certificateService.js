@@ -87,7 +87,7 @@ class CertificateService {
 
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const filename = `certificate_${certificate.student.rollNo}_${certificate.academicYear}_${certificate.semester}.pdf`;
-      const filepath = path.join(__dirname, '../uploads/certificates', filename);
+      const filepath = path.join('/tmp/uploads/certificates', filename);
 
       // Ensure directory exists
       const dir = path.dirname(filepath);
@@ -204,10 +204,10 @@ class CertificateService {
         
         if (normalizedPhoto.startsWith('uploads/')) {
           // Path already includes uploads/ prefix
-          photoPath = path.join(__dirname, '..', normalizedPhoto);
+          photoPath = path.join('/tmp', normalizedPhoto);
         } else {
           // Just filename, add full path
-          photoPath = path.join(__dirname, '../uploads/profile-photos', normalizedPhoto);
+          photoPath = path.join('/tmp/uploads/profile-photos', normalizedPhoto);
         }
         
         console.log('Constructed photo path:', photoPath);
