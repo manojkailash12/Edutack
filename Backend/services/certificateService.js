@@ -87,13 +87,24 @@ class CertificateService {
 
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const filename = `certificate_${certificate.student.rollNo}_${certificate.academicYear}_${certificate.semester}.pdf`;
-      const filepath = path.join(__dirname, '../uploads/certificates', filename);
+      
+      // Use /tmp directory for serverless environments (Render)
+      const uploadsDir = process.env.NODE_ENV === 'production' 
+        ? '/tmp/certificates' 
+        : path.join(__dirname, '../uploads/certificates');
+      
+      const filepath = path.join(uploadsDir, filename);
 
       // Ensure directory exists
       const dir = path.dirname(filepath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
+
+      console.log('=== PDF GENERATION DEBUG ===');
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Upload directory:', uploadsDir);
+      console.log('File path:', filepath);
 
       const stream = fs.createWriteStream(filepath);
       doc.pipe(stream);
@@ -697,7 +708,15 @@ class CertificateService {
         attachmentCount: mailOptions.attachments.length
       });
       
-      const info = await transporter.sendMail(mailOptions);
+      // Add timeout for email sending in production
+      const emailTimeout = process.env.NODE_ENV === 'production' ? 30000 : 15000; // 30s in production
+      
+      const emailPromise = transporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`Email timeout after ${emailTimeout/1000}s`)), emailTimeout)
+      );
+      
+      const info = await Promise.race([emailPromise, timeoutPromise]);
       
       console.log('Email sent successfully:', {
         messageId: info.messageId,
