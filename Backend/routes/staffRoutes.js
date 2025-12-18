@@ -33,6 +33,10 @@ const router = express.Router();
 
 router.route("/").get(staffController.getAllStaff).post(staffController.createNewStaff);
 
+router.route("/departments").get(staffController.getDepartments);
+
+router.route("/admin-registration-otp").post(staffController.sendAdminRegistrationOTP);
+
 router.route("/approve/:department").get(staffController.getNewStaffs);
 
 router.route("/hod-dashboard/:department").get(staffController.getHODDashboard);
@@ -51,5 +55,7 @@ router.route("/:id/change-password").patch(staffController.changeStaffPassword);
 router.route("/:id/profile-photo")
   .patch(upload.single('profilePhoto'), staffController.updateProfilePhoto)
   .delete(staffController.deleteProfilePhoto);
+
+router.route("/generate-salary-report-pdf").post(staffController.generateSalaryReportPDF);
 
 module.exports = router;

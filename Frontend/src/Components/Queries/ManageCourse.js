@@ -14,7 +14,7 @@ const ManageCourse = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await axios.get(`/paper/list/${encodeURIComponent(user.department)}`);
+        const response = await axios.get(`/paper/department/${encodeURIComponent(user.department)}`);
         setCourses(response.data);
       } catch (err) {
         setError("Failed to fetch courses data");
@@ -30,8 +30,6 @@ const ManageCourse = () => {
   }, [user]);
 
   const deleteCourse = async (courseId) => {
-    if (!window.confirm('Are you sure you want to delete this course?')) return;
-    
     try {
       await axios.delete(`/paper/${courseId}`);
       setCourses(prev => prev.filter(c => c._id !== courseId));

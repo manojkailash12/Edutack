@@ -1,7 +1,7 @@
 // Usage: node scripts/checkStudentPaperData.js
 const mongoose = require('mongoose');
 
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test';
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority';
 
 const Student = require('../Backend/models/Student');
 const Paper = require('../Backend/models/Paper');

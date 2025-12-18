@@ -16,17 +16,19 @@ mongoose.connection.on('disconnected', () => {
 const connectDB = async (retryCount = 0) => {
   const maxRetries = 4;
   try {
-    const dbUri = process.env.MONGODB_URI || "mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/edutrack?retryWrites=true&w=majority&appName=Edutrack";
+    const dbUri = process.env.MONGODB_URI || "mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority";
     
     await mongoose.connect(dbUri, {
-      serverSelectionTimeoutMS: 10000, // Increased timeout to 10s
-      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 30000, // Increased timeout to 30s
+      socketTimeoutMS: 60000, // Increased socket timeout to 60s
+      connectTimeoutMS: 30000, // Connection timeout
       family: 4, // Use IPv4, skip trying IPv6
       bufferCommands: false,
       maxPoolSize: 10,
-      minPoolSize: 5,
+      minPoolSize: 2, // Reduced minimum pool size
       maxIdleTimeMS: 30000,
-      serverSelectionRetryDelayMS: 2000, // Retry every 2 seconds
+      heartbeatFrequencyMS: 10000, // Check connection every 10s
+      retryWrites: true,
     });
     console.log("✅ Connected to MongoDB Atlas successfully");
   } catch (err) {

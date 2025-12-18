@@ -1,35 +1,29 @@
 {
-  "name": "edutack-netlify",
+  "name": "edutrack",
   "version": "1.0.0",
-  "description": "Edutack - Complete Education Management System on Netlify",
-  "main": "netlify/functions/api.js",
+  "description": "Educational Management System - Full Stack Application",
+  "main": "index.js",
   "scripts": {
-    "build": "cd Frontend && npm install && CI=false npm run build",
-    "dev": "cd Frontend && npm start",
-    "backend": "cd Backend && npm start",
-    "install-all": "npm install && cd Frontend && npm install && cd ../Backend && npm install",
-    "deploy": "netlify deploy --prod --dir=Frontend/build --functions=netlify/functions"
+    "prepare-deployment": "node prepare-deployment.js",
+    "install-all": "cd Frontend && npm install && cd ../Backend && npm install",
+    "dev-frontend": "cd Frontend && npm start",
+    "dev-backend": "cd Backend && npm run dev",
+    "build-frontend": "cd Frontend && npm run build",
+    "test-deployment": "node prepare-deployment.js"
   },
   "keywords": [
     "education",
     "management",
     "system",
-    "netlify",
-    "serverless",
     "react",
-    "nodejs"
+    "nodejs",
+    "mongodb",
+    "netlify"
   ],
-  "author": "Edutack Team",
+  "author": "Your Name",
   "license": "MIT",
-  "dependencies": {
-    "netlify-cli": "^17.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
   "repository": {
     "type": "git",
-    "url": "your-github-repo-url"
+    "url": "https://github.com/yourusername/edutrack.git"
   }
 }

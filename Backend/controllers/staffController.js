@@ -66,17 +66,51 @@ const getStaffList = asyncHandler(async (req, res) => {
 // @route POST /Staff
 // @access Private
 const createNewStaff = asyncHandler(async (req, res) => {
-  const { username, name, email, department, password, role } = req.body;
+  const { username, name, email, department, password, role, otp } = req.body;
 
   // Confirm Data
   if (!username || !name || !email || !department || !password || !role) {
     return res.status(400).json({ message: "All fields are required" });
   }
 
+  // Special handling for admin registration
+  if (role === 'admin') {
+    // Check if this is the first admin (no OTP required)
+    const existingAdmins = await Staff.countDocuments({ role: 'admin' });
+    
+    if (existingAdmins === 0) {
+      // First admin - no OTP required
+      console.log('Creating first admin without OTP verification');
+    } else {
+      // Subsequent admin - OTP required
+      if (!otp) {
+        return res.status(400).json({ 
+          message: "OTP verification required for admin registration",
+          requiresOTP: true
+        });
+      }
+
+      // Verify OTP
+      const record = registrationOtpStore[email];
+      if (!record || record.otp !== otp || record.expires < Date.now()) {
+        return res.status(400).json({ message: 'Invalid or expired OTP' });
+      }
+
+      // Clear the OTP after successful verification
+      delete registrationOtpStore[email];
+    }
+  }
+
   // Check for Duplicate Username
   const duplicateUsername = await Staff.findOne({ username }).lean().exec();
   if (duplicateUsername) {
     return res.status(409).json({ message: "Duplicate Username" });
+  }
+
+  // Check for Duplicate Email
+  const duplicateEmail = await Staff.findOne({ email }).lean().exec();
+  if (duplicateEmail) {
+    return res.status(409).json({ message: "Email already registered" });
   }
 
   // Find the current max employeeId, only considering non-null values
@@ -94,16 +128,90 @@ const createNewStaff = asyncHandler(async (req, res) => {
     department,
     password: hashedPwd,
     role,
-    approved: role === 'HOD',
+    approved: role === 'HOD' || role === 'admin', // Auto-approve HOD and admin
   };
 
   // Create and Store New staff
   const staff = await Staff.create(staffObj);
 
   if (staff) {
-    res.status(201).json({ message: `New Staff ${username} Registered`, employeeId: staff.employeeId });
+    res.status(201).json({ 
+      message: `New ${role} ${username} Registered`, 
+      employeeId: staff.employeeId,
+      isFirstAdmin: role === 'admin' && (await Staff.countDocuments({ role: 'admin' })) === 1
+    });
   } else {
     res.status(400).json({ message: "Invalid data received" });
+  }
+});
+
+// @desc Send OTP for Admin Registration
+// @route POST /staff/admin-registration-otp
+// @access Public
+const sendAdminRegistrationOTP = asyncHandler(async (req, res) => {
+  const { email, name } = req.body;
+
+  if (!email || !name) {
+    return res.status(400).json({ message: "Email and name are required" });
+  }
+
+  // Check if this would be the first admin
+  const existingAdmins = await Staff.countDocuments({ role: 'admin' });
+  if (existingAdmins === 0) {
+    return res.status(400).json({ 
+      message: "First admin registration does not require OTP",
+      isFirstAdmin: true
+    });
+  }
+
+  // Check if email is already registered
+  const existingStaff = await Staff.findOne({ email });
+  if (existingStaff) {
+    return res.status(409).json({ message: "Email already registered" });
+  }
+
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // Store OTP with 10-minute expiry
+  registrationOtpStore[email] = {
+    otp,
+    expires: Date.now() + 10 * 60 * 1000, // 10 minutes
+    name,
+    role: 'admin'
+  };
+
+  try {
+    // Send OTP email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Admin Registration OTP - Edutack',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Admin Registration OTP</h2>
+          <p>Dear ${name},</p>
+          <p>You are registering as an Administrator for Edutack. Please use the following OTP to complete your registration:</p>
+          <div style="background-color: #f0f0f0; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
+          </div>
+          <p><strong>This OTP is valid for 10 minutes only.</strong></p>
+          <p>If you did not request this registration, please ignore this email.</p>
+          <hr style="margin: 30px 0;">
+          <p style="color: #666; font-size: 12px;">This is an automated email from Edutack System.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    
+    res.json({
+      message: `Admin registration OTP sent successfully to ${email}`,
+      email: email
+    });
+  } catch (error) {
+    console.error('Email send error:', error);
+    res.status(500).json({ message: 'Failed to send OTP email. Please try again later.' });
   }
 });
 
@@ -173,8 +281,8 @@ const updateProfilePhoto = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "Staff not found" });
     }
 
-    // Update profile photo URL
-    staff.profilePhoto = req.file.path;
+    // Update profile photo URL (normalize path for URLs)
+    staff.profilePhoto = req.file.path.replace(/\\/g, '/');
     const updatedStaff = await staff.save();
 
     res.json({
@@ -568,6 +676,78 @@ const deleteStaff = asyncHandler(async (req, res) => {
   res.json({ message: "Staff deleted successfully" });
 });
 
+// @desc Get Unique Departments
+// @route GET /staff/departments
+// @access Public
+const getDepartments = asyncHandler(async (req, res) => {
+  try {
+    // Get unique departments from both Staff and Student collections
+    const staffDepartments = await Staff.distinct('department');
+    const studentDepartments = await Student.distinct('department');
+    
+    // Combine and remove duplicates
+    const allDepartments = [...new Set([...staffDepartments, ...studentDepartments])];
+    
+    // Filter out null/undefined values and sort
+    const departments = allDepartments
+      .filter(dept => dept && dept.trim() !== '')
+      .sort();
+
+    res.json({
+      message: "Departments retrieved successfully",
+      departments
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Error fetching departments", 
+      error: error.message 
+    });
+  }
+});
+
+// @desc Generate Salary Report PDF
+// @route POST /staff/generate-salary-report-pdf
+// @access Private
+const generateSalaryReportPDF = asyncHandler(async (req, res) => {
+  const { generateSalaryReportPDF: generatePDF } = require('../services/salaryReportService');
+  const fs = require('fs');
+  
+  try {
+    const reportData = req.body;
+    
+    if (!reportData || !reportData.staffData) {
+      return res.status(400).json({ message: "Report data is required" });
+    }
+
+    // Generate PDF
+    const result = await generatePDF(reportData);
+    
+    if (result.success) {
+      // Send PDF file as response
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      
+      const fileStream = fs.createReadStream(result.filepath);
+      fileStream.pipe(res);
+      
+      // Clean up file after sending
+      fileStream.on('end', () => {
+        fs.unlink(result.filepath, (err) => {
+          if (err) console.error('Error deleting temp PDF file:', err);
+        });
+      });
+    } else {
+      res.status(500).json({ message: "Failed to generate PDF report" });
+    }
+  } catch (error) {
+    console.error('Error generating salary report PDF:', error);
+    res.status(500).json({ 
+      message: "Error generating PDF report", 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = {
   getStaff,
   getNewStaffs,
@@ -575,6 +755,7 @@ module.exports = {
   getAllStaff,
   getStaffByDepartment,
   createNewStaff,
+  sendAdminRegistrationOTP,
   approveStaff,
   updateStaff,
   deleteStaff,
@@ -582,5 +763,7 @@ module.exports = {
   updateProfilePhoto,
   deleteProfilePhoto,
   getHODDashboard,
-  getHODSummary
+  getHODSummary,
+  getDepartments,
+  generateSalaryReportPDF
 };

@@ -217,8 +217,8 @@ const Notes = () => {
       <hr className="mt-3 border-b-[1px] border-slate-500 " />
 
       <section className="note__body w-full ">
-        {/* Debug info for students */}
-        {user.userType === "student" && (
+        {/* Debug info for students (development only) */}
+        {process.env.NODE_ENV === 'development' && user.userType === "student" && (
           <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-800 dark:text-blue-200">
             <p>Loading notes for Section: {user.section}</p>
             <p>Found {notes?.length || 0} notes</p>

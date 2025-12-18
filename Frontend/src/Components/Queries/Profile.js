@@ -26,7 +26,26 @@ const Profile = () => {
         
         // Set profile photo if exists
         if (response.data.profilePhoto) {
-          setPhotoPreview(response.data.profilePhoto);
+          // Construct full URL for profile photo
+          const baseUrl = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:3500';
+          let photoUrl;
+          
+          console.log('Profile photo from backend:', response.data.profilePhoto);
+          console.log('Base URL:', baseUrl);
+          
+          if (response.data.profilePhoto.startsWith('http')) {
+            photoUrl = response.data.profilePhoto;
+          } else {
+            // Normalize the path and ensure it starts with uploads/
+            let normalizedPath = response.data.profilePhoto.replace(/\\/g, '/');
+            if (!normalizedPath.startsWith('uploads/')) {
+              normalizedPath = `uploads/profile-photos/${normalizedPath}`;
+            }
+            photoUrl = `${baseUrl}/${normalizedPath}`;
+          }
+          
+          console.log('Constructed photo URL:', photoUrl);
+          setPhotoPreview(photoUrl);
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -124,7 +143,22 @@ const Profile = () => {
       
       // Update profile data
       if (response.data.profilePhoto) {
-        setPhotoPreview(response.data.profilePhoto);
+        // Construct full URL for profile photo
+        const baseUrl = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:3500';
+        let photoUrl;
+        
+        if (response.data.profilePhoto.startsWith('http')) {
+          photoUrl = response.data.profilePhoto;
+        } else {
+          // Normalize the path and ensure it starts with uploads/
+          let normalizedPath = response.data.profilePhoto.replace(/\\/g, '/');
+          if (!normalizedPath.startsWith('uploads/')) {
+            normalizedPath = `uploads/profile-photos/${normalizedPath}`;
+          }
+          photoUrl = `${baseUrl}/${normalizedPath}`;
+        }
+        
+        setPhotoPreview(photoUrl);
       }
       
     } catch (err) {
@@ -168,6 +202,13 @@ const Profile = () => {
                     src={photoPreview}
                     alt="Profile"
                     className="m-2 rounded-full border-2 border-slate-900 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 object-cover dark:border-slate-300"
+                    onError={(e) => {
+                      console.error('Image failed to load:', photoPreview);
+                      console.error('Error event:', e);
+                    }}
+                    onLoad={() => {
+                      console.log('Image loaded successfully:', photoPreview);
+                    }}
                   />
                   <div className="absolute bottom-0 right-0 flex space-x-1">
                     <button
@@ -242,7 +283,25 @@ const Profile = () => {
                 <button
                   onClick={() => {
                     setProfilePhoto(null);
-                    setPhotoPreview(profile.profilePhoto || null);
+                    if (profile.profilePhoto) {
+                      const baseUrl = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:3500';
+                      let photoUrl;
+                      
+                      if (profile.profilePhoto.startsWith('http')) {
+                        photoUrl = profile.profilePhoto;
+                      } else {
+                        // Normalize the path and ensure it starts with uploads/
+                        let normalizedPath = profile.profilePhoto.replace(/\\/g, '/');
+                        if (!normalizedPath.startsWith('uploads/')) {
+                          normalizedPath = `uploads/profile-photos/${normalizedPath}`;
+                        }
+                        photoUrl = `${baseUrl}/${normalizedPath}`;
+                      }
+                      
+                      setPhotoPreview(photoUrl);
+                    } else {
+                      setPhotoPreview(null);
+                    }
                   }}
                   disabled={uploading}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
@@ -264,9 +323,80 @@ const Profile = () => {
                     <th className="bg-slate-900 p-4 text-base capitalize text-slate-100">
                       {key}
                     </th>
-                    <td className="px-4 py-2">{profile[key]}</td>
+                    <td className="px-4 py-2">
+                      {key === 'salary' || key === 'baseSalary' || key === 'dailyRate' || key === 'hourlyRate' 
+                        ? `Rs. ${(profile[key] || 0).toLocaleString('en-IN')}` 
+                        : profile[key]}
+                    </td>
                   </tr>
                 ))}
+                
+                {/* Add salary information section for staff */}
+                {user.userType === 'staff' && profile.salary && (
+                  <>
+                    <tr className="border-t border-slate-400 bg-blue-50 dark:bg-blue-900/20">
+                      <th colSpan="2" className="bg-blue-600 p-3 text-base font-semibold text-white text-center">
+                        Salary Information
+                      </th>
+                    </tr>
+                    <tr className="border-t border-slate-400">
+                      <th className="bg-slate-900 p-4 text-base text-slate-100">
+                        Monthly Salary
+                      </th>
+                      <td className="px-4 py-2 font-semibold text-green-600">
+                        Rs. {(profile.salary || profile.baseSalary || 0).toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-slate-400">
+                      <th className="bg-slate-900 p-4 text-base text-slate-100">
+                        Salary Type
+                      </th>
+                      <td className="px-4 py-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          profile.salaryType === 'attendance-based' 
+                            ? 'bg-orange-100 text-orange-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {profile.salaryType === 'attendance-based' ? 'Attendance-Based' : 'Fixed Salary'}
+                        </span>
+                      </td>
+                    </tr>
+                    {profile.salaryType === 'attendance-based' && (
+                      <>
+                        <tr className="border-t border-slate-400">
+                          <th className="bg-slate-900 p-4 text-base text-slate-100">
+                            Daily Rate
+                          </th>
+                          <td className="px-4 py-2">
+                            Rs. {(profile.dailyRate || 0).toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                        <tr className="border-t border-slate-400">
+                          <th className="bg-slate-900 p-4 text-base text-slate-100">
+                            Hourly Rate
+                          </th>
+                          <td className="px-4 py-2">
+                            Rs. {(profile.hourlyRate || 0).toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                    {profile.joiningDate && (
+                      <tr className="border-t border-slate-400">
+                        <th className="bg-slate-900 p-4 text-base text-slate-100">
+                          Joining Date
+                        </th>
+                        <td className="px-4 py-2">
+                          {new Date(profile.joiningDate).toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )}
               </tbody>
             </table>
           </div>

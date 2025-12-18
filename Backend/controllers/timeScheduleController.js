@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const TimeSchedule = require("../models/TimeSchedule");
 const Paper = require("../models/Paper");
 const Staff = require("../models/Staff");
+const AcademicCalendar = require("../models/AcademicCalendar");
 
 // @desc Get All Time Schedules
 // @route GET /time-schedule
@@ -17,7 +18,7 @@ const getAllTimeSchedules = asyncHandler(async (req, res) => {
   res.json(timeSchedules);
 });
 
-// @desc Get Time Schedules by Department
+// @desc Get Time Schedules by Department with Filters
 // @route GET /time-schedule/department/:department
 // @access Private
 const getTimeSchedulesByDepartment = asyncHandler(async (req, res) => {
@@ -25,17 +26,109 @@ const getTimeSchedulesByDepartment = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Department parameter required" });
   }
 
-  const timeSchedules = await TimeSchedule.find({ 
+  const { semester, year, section, teacher } = req.query;
+  
+  // Build filter object
+  const filter = { 
     department: req.params.department,
     isActive: true 
-  })
-    .populate('paper', 'paper semester')
-    .populate('teacher', 'name')
+  };
+
+  if (semester) filter.semester = semester;
+  if (year) filter.year = year;
+  if (section) filter.section = section;
+  if (teacher) filter.teacher = teacher;
+
+  const timeSchedules = await TimeSchedule.find(filter)
+    .populate('paper', 'paper semester sections')
+    .populate('teacher', 'name department')
     .populate('createdBy', 'name')
-    .sort({ day: 1, hour: 1, section: 1 })
+    .sort({ section: 1, day: 1, hour: 1 })
     .exec();
 
   res.json(timeSchedules);
+});
+
+// @desc Generate Complete Timetable for Department/Semester
+// @route POST /time-schedule/generate
+// @access Private (HOD/Admin only)
+const generateTimetable = asyncHandler(async (req, res) => {
+  const { department, semester, year, createdBy } = req.body;
+
+  if (!department || !semester || !year || !createdBy) {
+    return res.status(400).json({ message: "Department, semester, year, and createdBy are required" });
+  }
+
+  try {
+    // Get all papers for the department and semester
+    const papers = await Paper.find({ 
+      department, 
+      semester,
+      year: year || "2024-2025" 
+    }).populate('teacher', 'name department');
+
+    if (!papers.length) {
+      return res.status(404).json({ message: "No papers found for the specified criteria" });
+    }
+
+    // Get all sections for the papers
+    const allSections = [...new Set(papers.flatMap(paper => paper.sections || []))];
+    
+    if (!allSections.length) {
+      return res.status(404).json({ message: "No sections found for the papers" });
+    }
+
+    // Clear existing timetable for the department/semester/year
+    await TimeSchedule.deleteMany({ department, semester, year });
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const hours = ['1', '2', '3', '4'];
+    const schedules = [];
+
+    // Generate timetable for each section
+    for (const section of allSections) {
+      const sectionPapers = papers.filter(paper => paper.sections.includes(section));
+      let paperIndex = 0;
+
+      for (const day of days) {
+        for (const hour of hours) {
+          if (sectionPapers.length > 0) {
+            const paper = sectionPapers[paperIndex % sectionPapers.length];
+            
+            const schedule = {
+              department,
+              semester,
+              year,
+              day,
+              hour,
+              paper: paper._id,
+              teacher: paper.teacher._id,
+              section,
+              createdBy,
+              isActive: true
+            };
+
+            schedules.push(schedule);
+            paperIndex++;
+          }
+        }
+      }
+    }
+
+    // Insert all schedules
+    const createdSchedules = await TimeSchedule.insertMany(schedules);
+
+    res.status(201).json({
+      message: `Timetable generated successfully for ${department} - Semester ${semester}`,
+      schedulesCreated: createdSchedules.length,
+      sections: allSections,
+      papers: papers.length
+    });
+
+  } catch (error) {
+    console.error('Timetable generation error:', error);
+    res.status(500).json({ message: "Error generating timetable", error: error.message });
+  }
 });
 
 // @desc Get Time Schedules by Teacher
@@ -836,6 +929,144 @@ const getCurrentTimeSlotsWithUpdates = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc Create Single Time Schedule
+// @route POST /time-schedule/single
+// @access Private (HOD/Admin only)
+const createTimeSchedule = asyncHandler(async (req, res) => {
+  const { 
+    department, 
+    semester, 
+    year, 
+    day, 
+    hour, 
+    paper, 
+    teacher, 
+    section, 
+    createdBy 
+  } = req.body;
+
+  // Validate required fields
+  if (!department || !semester || !year || !day || !hour || !paper || !teacher || !section || !createdBy) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  // Check for existing schedule at the same time slot
+  const existingSchedule = await TimeSchedule.findOne({
+    department,
+    semester,
+    year,
+    day,
+    hour,
+    section
+  });
+
+  if (existingSchedule) {
+    return res.status(409).json({ 
+      message: "A schedule already exists for this time slot",
+      existing: existingSchedule
+    });
+  }
+
+  const schedule = await TimeSchedule.create({
+    department,
+    semester,
+    year,
+    day,
+    hour,
+    paper,
+    teacher,
+    section,
+    createdBy,
+    isActive: true
+  });
+
+  // Populate the created schedule
+  await schedule.populate('paper', 'paper semester');
+  await schedule.populate('teacher', 'name');
+  await schedule.populate('createdBy', 'name');
+
+  res.status(201).json({
+    message: "Schedule created successfully",
+    schedule
+  });
+});
+
+// @desc Get Timetable Statistics
+// @route GET /time-schedule/stats/:department
+// @access Private
+const getTimetableStats = asyncHandler(async (req, res) => {
+  const { department } = req.params;
+  const { semester, year } = req.query;
+
+  if (!department) {
+    return res.status(400).json({ message: "Department parameter required" });
+  }
+
+  const filter = { department, isActive: true };
+  if (semester) filter.semester = semester;
+  if (year) filter.year = year;
+
+  try {
+    const stats = await TimeSchedule.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalSchedules: { $sum: 1 },
+          uniqueSections: { $addToSet: "$section" },
+          uniqueTeachers: { $addToSet: "$teacher" },
+          uniquePapers: { $addToSet: "$paper" },
+          schedulesByDay: {
+            $push: {
+              day: "$day",
+              count: 1
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          totalSchedules: 1,
+          totalSections: { $size: "$uniqueSections" },
+          totalTeachers: { $size: "$uniqueTeachers" },
+          totalPapers: { $size: "$uniquePapers" },
+          sections: "$uniqueSections",
+          schedulesByDay: 1
+        }
+      }
+    ]);
+
+    // Get day-wise distribution
+    const dayStats = await TimeSchedule.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$day",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      department,
+      semester: semester || 'All',
+      year: year || 'All',
+      statistics: stats[0] || {
+        totalSchedules: 0,
+        totalSections: 0,
+        totalTeachers: 0,
+        totalPapers: 0,
+        sections: []
+      },
+      dayWiseDistribution: dayStats
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching statistics", error: error.message });
+  }
+});
+
 module.exports = {
   getAllTimeSchedules,
   getTimeSchedulesByDepartment,
@@ -843,6 +1074,7 @@ module.exports = {
   getCurrentTimeSlot,
   addTimeSchedule,
   generateCompleteTimetable,
+  generateTimetable,
   getTimetableBySection,
   updateTimeSchedule,
   deleteTimeSchedule,
@@ -852,5 +1084,7 @@ module.exports = {
   notifyTimetableChanges,
   getTimetableChanges,
   updateTimeScheduleWithTracking,
-  getCurrentTimeSlotsWithUpdates
+  getCurrentTimeSlotsWithUpdates,
+  createTimeSchedule,
+  getTimetableStats
 };

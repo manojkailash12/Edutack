@@ -8,7 +8,7 @@ const Quiz = require('./models/Quiz');
 const Notes = require('./models/Notes');
 const Attendance = require('./models/Attendance');
 
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/';
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority';
 
 // Section mapping
 const sectionMapping = {

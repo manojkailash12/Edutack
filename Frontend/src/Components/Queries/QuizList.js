@@ -4,17 +4,26 @@ import { Link } from "react-router-dom";
 import UserContext from "../../Hooks/UserContext";
 import { FaPlus, FaTrash, FaEdit, FaEye } from "react-icons/fa";
 import { toast } from "react-toastify";
-import Loading from "../Layouts/Loading";
+import InstantLoader from "../Layouts/InstantLoader";
 import ErrorStrip from "../ErrorStrip";
+import { useInstantData } from "../../Hooks/useInstantData";
 
 const QuizList = () => {
   const { user } = useContext(UserContext);
+  const { data: quizzesData, loading: globalLoading } = useInstantData('quizzes');
   const [quizzes, setQuizzes] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedPaper, setSelectedPaper] = useState("");
   const [userPapers, setUserPapers] = useState([]);
   const [selectedSection, setSelectedSection] = useState("");
+
+  // Update quizzes when data is loaded
+  useEffect(() => {
+    if (quizzesData) {
+      setQuizzes(quizzesData);
+    }
+  }, [quizzesData]);
 
   // Fetch user's papers
   useEffect(() => {
@@ -148,8 +157,6 @@ const QuizList = () => {
   }, [getQuizzes, selectedPaper]);
 
   const deleteQuiz = useCallback(async (quizId) => {
-    if (!window.confirm('Are you sure you want to delete this quiz?')) return;
-    
     try {
       const response = await axios.delete(`/quizzes/${quizId}`);
       toast.success(response.data.message);
@@ -280,10 +287,8 @@ const QuizList = () => {
           <div className="text-center py-8">
             <p className="text-gray-500">Please select a paper to view quizzes</p>
           </div>
-        ) : loading ? (
-          <div className="text-center py-8">
-            <Loading />
-          </div>
+        ) : (loading || globalLoading) && !quizzes.length ? (
+          <InstantLoader type="cards" rows={6} />
         ) : filteredQuizzes.length > 0 ? (
           <div className="space-y-4">
             {filteredQuizzes.map((quiz, index) => (
@@ -419,7 +424,7 @@ const QuizList = () => {
           </div>
         ) : (
           <div className="text-center py-8">
-            {!error ? <Loading /> : <p className="text-gray-500">No quizzes found</p>}
+            {(loading || globalLoading) && !quizzes.length ? <InstantLoader type="cards" rows={3} /> : <p className="text-gray-500">No quizzes found</p>}
           </div>
         )}
       </div>

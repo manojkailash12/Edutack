@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ALLOWED_CREDITS } = require("../constants/credits");
 
 // Individual Paper in a Course
 const paperSchema = new mongoose.Schema({
@@ -18,6 +19,18 @@ const paperSchema = new mongoose.Schema({
   paper: {
     type: String,
     required: true,
+  },
+  subjectCode: {
+    type: String,
+    required: true,
+    uppercase: true,
+    trim: true
+  },
+  credits: {
+    type: Number,
+    required: true,
+    enum: ALLOWED_CREDITS,
+    default: 3
   },
   sections: {
     type: [String],

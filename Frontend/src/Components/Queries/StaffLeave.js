@@ -3,6 +3,7 @@ import UserContext from "../../Hooks/UserContext";
 import { FaCheck, FaTimes, FaEye } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Loading from "../Layouts/Loading";
+import axios from "../../config/api/axios";
 
 const StaffLeave = () => {
   const { user } = useContext(UserContext);
@@ -10,73 +11,49 @@ const StaffLeave = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Mock leave data since there's no backend endpoint yet
   useEffect(() => {
     const fetchLeaveRequests = async () => {
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock data for demonstration
-        const mockLeaveRequests = [
-          {
-            _id: "1",
-            staffName: "Dr. Sarah Wilson",
-            staffId: "ST001",
-            leaveType: "Sick Leave",
-            startDate: "2024-01-20",
-            endDate: "2024-01-22",
-            reason: "Medical treatment and recovery period as advised by doctor.",
-            status: "Pending",
-            submittedAt: new Date().toISOString(),
-            documents: ["medical_certificate.pdf"],
-            substitute: "Prof. John Doe"
-          },
-          {
-            _id: "2",
-            staffName: "Prof. Robert Brown",
-            staffId: "ST002",
-            leaveType: "Casual Leave",
-            startDate: "2024-01-25",
-            endDate: "2024-01-26",
-            reason: "Personal work - property documentation.",
-            status: "Approved",
-            submittedAt: new Date().toISOString(),
-            documents: [],
-            substitute: "Dr. Emily Davis"
-          },
-          {
-            _id: "3",
-            staffName: "Dr. Michael Johnson",
-            staffId: "ST003",
-            leaveType: "Conference Leave",
-            startDate: "2024-02-01",
-            endDate: "2024-02-03",
-            reason: "Attending International Computer Science Conference in Delhi.",
-            status: "Approved",
-            submittedAt: new Date().toISOString(),
-            documents: ["conference_invitation.pdf"],
-            substitute: "Prof. Lisa Anderson"
-          }
-        ];
-        
-        setLeaveRequests(mockLeaveRequests);
+        let response;
+        if (user.role === "admin") {
+          // Admin can see all staff leave requests from all departments
+          response = await axios.get('/leave/staff/all');
+        } else if (user.role === "HOD" && user.department) {
+          // HOD can see staff leave requests from their department only
+          response = await axios.get(`/leave/staff/department/${encodeURIComponent(user.department)}`);
+        } else {
+          setError("Department information not found");
+          return;
+        }
+        setLeaveRequests(Array.isArray(response.data) ? response.data : []);
       } catch (err) {
-        setError("Failed to fetch leave requests");
-        console.error(err);
+        const errorMessage = err.response?.data?.message || 
+                            err.message || 
+                            "Failed to fetch leave requests";
+        setError(errorMessage);
+        console.error("Error fetching staff leave requests:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (user && user.role === "HOD" && user.department) {
+    if (user && (user.role === "admin" || (user.role === "HOD" && user.department))) {
       fetchLeaveRequests();
+    } else if (user && user.role === "HOD") {
+      setError("Department information missing");
+      setLoading(false);
+    } else if (user) {
+      setLoading(false);
     }
   }, [user]);
 
   const handleApprove = async (leaveId) => {
     try {
-      // Mock API call
+      await axios.patch(`/leave/staff/${leaveId}/status`, {
+        status: 'Approved',
+        reviewerId: user._id
+      });
+      
       setLeaveRequests(prev => 
         prev.map(leave => 
           leave._id === leaveId ? { ...leave, status: 'Approved' } : leave
@@ -84,13 +61,18 @@ const StaffLeave = () => {
       );
       toast.success('Leave request approved successfully');
     } catch (err) {
-      toast.error('Error approving leave request');
+      console.error('Error approving leave request:', err);
+      toast.error(err.response?.data?.message || 'Error approving leave request');
     }
   };
 
   const handleReject = async (leaveId) => {
     try {
-      // Mock API call
+      await axios.patch(`/leave/staff/${leaveId}/status`, {
+        status: 'Rejected',
+        reviewerId: user._id
+      });
+      
       setLeaveRequests(prev => 
         prev.map(leave => 
           leave._id === leaveId ? { ...leave, status: 'Rejected' } : leave
@@ -98,7 +80,8 @@ const StaffLeave = () => {
       );
       toast.success('Leave request rejected');
     } catch (err) {
-      toast.error('Error rejecting leave request');
+      console.error('Error rejecting leave request:', err);
+      toast.error(err.response?.data?.message || 'Error rejecting leave request');
     }
   };
 
@@ -132,11 +115,11 @@ const StaffLeave = () => {
 
   if (loading) return <Loading />;
 
-  if (user.role !== "HOD") {
+  if (user.role !== "HOD" && user.role !== "admin") {
     return (
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-        <p className="text-gray-600">Only HOD can access this page.</p>
+        <p className="text-gray-600">Only HOD and Admin can access this page.</p>
       </div>
     );
   }
@@ -147,7 +130,7 @@ const StaffLeave = () => {
         Staff Leave
       </h2>
       <h3 className="text-2xl font-semibold mb-6">
-        Department: {user.department}
+        {user.role === "admin" ? "All Departments - Staff Leave Management" : `Department: ${user.department}`}
       </h3>
 
       {error && (
@@ -167,6 +150,9 @@ const StaffLeave = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Staff Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Staff ID</th>
+                {user.role === "admin" && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Department</th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Substitute</th>
@@ -178,20 +164,30 @@ const StaffLeave = () => {
             <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
               {leaveRequests.map((leave, index) => (
                 <tr key={leave._id || index} className="hover:bg-gray-50 dark:hover:bg-slate-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.staffName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.staffId}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.staffName || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.employeeId || 'N/A'}</td>
+                  {user.role === "admin" && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-200">
+                        {leave.department || 'N/A'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLeaveTypeColor(leave.leaveType)}`}>
-                      {leave.leaveType}
+                      {leave.leaveType || 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                    {leave.startDate && leave.endDate ? 
+                      `${new Date(leave.startDate).toLocaleDateString()} - ${new Date(leave.endDate).toLocaleDateString()}` : 
+                      'N/A'
+                    }
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.substitute}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.substitute || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs">
-                    <div className="truncate" title={leave.reason}>
-                      {leave.reason.length > 30 ? `${leave.reason.substring(0, 30)}...` : leave.reason}
+                    <div className="truncate" title={leave.reason || ''}>
+                      {leave.reason && leave.reason.length > 30 ? `${leave.reason.substring(0, 30)}...` : (leave.reason || 'No reason provided')}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -239,12 +235,7 @@ const StaffLeave = () => {
           </div>
         )}
 
-        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 text-sm">
-            <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-            This is a demo with sample data. The staff leave management system will be fully integrated with the backend in the next update.
-          </p>
-        </div>
+
       </div>
     </main>
   );

@@ -6,6 +6,16 @@ const internalSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Paper",
   },
+  academicYear: {
+    type: String,
+    required: true,
+    default: "2025-2026"
+  },
+  semester: {
+    type: String,
+    required: true,
+    enum: ["Semester 1", "Semester 2", "Semester 3", "Semester 4", "Semester 5", "Semester 6", "Semester 7", "Semester 8"]
+  },
   marks: [
     {
       _id: {
@@ -37,6 +47,12 @@ const internalSchema = new mongoose.Schema({
       },
     },
   ],
+}, {
+  timestamps: true,
 });
+
+// Indexes for efficient querying
+internalSchema.index({ paper: 1, academicYear: 1, semester: 1 });
+internalSchema.index({ "marks._id": 1 });
 
 module.exports = mongoose.model("Internal", internalSchema);

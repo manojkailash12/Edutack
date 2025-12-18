@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect } from "react";
+import { apiService } from "../services/apiService";
 
 const UserContext = createContext();
 
@@ -31,11 +32,21 @@ export const UserProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Enhanced setUser function that handles localStorage
+  // Enhanced setUser function that handles localStorage and prefetching
   const setUserWithPersistence = (userData) => {
     setUser(userData);
-    // The useEffect above will handle localStorage automatically
+    // Prefetch common data when user logs in
+    if (userData && userData._id) {
+      apiService.prefetchCommonData(userData);
+    }
   };
+
+  // Prefetch data when user is loaded from localStorage
+  useEffect(() => {
+    if (user && user._id) {
+      apiService.prefetchCommonData(user);
+    }
+  }, [user]);
 
   return (
     <UserContext.Provider

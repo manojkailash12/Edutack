@@ -259,8 +259,10 @@ const getStudentsByPaper = asyncHandler(async (req, res) => {
 // @access Private
 const getStudentsByPaperAndSection = asyncHandler(async (req, res) => {
   const { paperId, section } = req.params;
-  console.log(`=== getStudentsByPaperAndSection DEBUG ===`);
-  console.log(`Paper ID: ${paperId}, Section: ${section}`);
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`=== getStudentsByPaperAndSection DEBUG ===`);
+    console.log(`Paper ID: ${paperId}, Section: ${section}`);
+  }
   
   if (!paperId || !section) {
     return res.status(400).json({ message: "Paper ID and Section are required" });
@@ -363,8 +365,8 @@ const updateProfilePhoto = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    // Update profile photo URL
-    student.profilePhoto = req.file.path;
+    // Update profile photo URL (normalize path for URLs)
+    student.profilePhoto = req.file.path.replace(/\\/g, '/');
     const updatedStudent = await student.save();
 
     res.json({

@@ -4,7 +4,7 @@ const Student = require('../models/Student');
 const Paper = require('../models/Paper');
 
 // === CONFIGURE THESE ===
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test'; // <-- set your DB name
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority'; // <-- set your DB name
 const PAPER_ID = 'YOUR_PAPER_ID_HERE'; // <-- set your paper ObjectId
 // =======================
 

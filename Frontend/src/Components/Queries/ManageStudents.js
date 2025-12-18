@@ -3,51 +3,39 @@ import UserContext from "../../Hooks/UserContext";
 import axios from "../../config/api/axios";
 import { FaEdit, FaTrash, FaEye } from "react-icons/fa";
 import { toast } from "react-toastify";
-import Loading from "../Layouts/Loading";
+import InstantLoader from "../Layouts/InstantLoader";
+import { useInstantData } from "../../Hooks/useInstantData";
 
 const ManageStudents = () => {
   const { user } = useContext(UserContext);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data: students, loading, error, refresh } = useInstantData('students');
+  const [localStudents, setLocalStudents] = useState([]);
 
+  // Update local state when data changes
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const response = await axios.get(`/student/list/${encodeURIComponent(user.department)}`);
-        setStudents(response.data);
-      } catch (err) {
-        setError("Failed to fetch students data");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user && user.role === "HOD" && user.department) {
-      fetchStudents();
+    if (students) {
+      setLocalStudents(students);
     }
-  }, [user]);
+  }, [students]);
 
   const deleteStudent = async (studentId) => {
-    if (!window.confirm('Are you sure you want to delete this student?')) return;
-    
     try {
       await axios.delete(`/student/${studentId}`);
-      setStudents(prev => prev.filter(s => s._id !== studentId));
+      setLocalStudents(prev => prev.filter(s => s._id !== studentId));
       toast.success('Student deleted successfully');
+      refresh(); // Refresh cache
     } catch (err) {
       toast.error('Error deleting student');
     }
   };
 
-  if (loading) return <Loading />;
+  if (loading && !localStudents.length) return <InstantLoader type="table" rows={8} />;
 
-  if (user.role !== "HOD") {
+  if (user.role !== "HOD" && user.role !== "admin") {
     return (
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-        <p className="text-gray-600">Only HOD can access this page.</p>
+        <p className="text-gray-600">Only HOD and Admin can access this page.</p>
       </div>
     );
   }
@@ -58,7 +46,7 @@ const ManageStudents = () => {
         Manage Students
       </h2>
       <h3 className="text-2xl font-semibold mb-6">
-        Department: {user.department}
+        {user.role === "admin" ? "All Departments" : `Department: ${user.department}`}
       </h3>
 
       {error && (
@@ -69,7 +57,7 @@ const ManageStudents = () => {
 
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Students List ({students.length})</h3>
+          <h3 className="text-lg font-semibold">Students List ({localStudents.length})</h3>
         </div>
         
         <div className="overflow-x-auto">
@@ -86,7 +74,7 @@ const ManageStudents = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {students.map((student, index) => (
+              {localStudents.map((student, index) => (
                 <tr key={student._id || index} className="hover:bg-gray-50 dark:hover:bg-slate-700">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{student.rollNo}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{student.name}</td>

@@ -217,34 +217,72 @@ const getPaper = asyncHandler(async (req, res) => {
 // @route POST /Paper
 // @access Private
 const addPaper = asyncHandler(async (req, res) => {
-  const { department, semester, year, paper, students, teacher, sections } = req.body;
+  const { department, semester, year, paper, subjectCode, credits, students, teacher, sections } = req.body;
   console.log('Creating new paper:', req.body);
   // Confirm Data
-  if (!department || !paper || !semester || !year || !teacher || !sections || sections.length === 0) {
+  if (!department || !paper || !subjectCode || !credits || !semester || !year || !teacher || !sections || sections.length === 0) {
     return res
       .status(400)
-      .json({ message: "Incomplete Request: Fields Missing (including sections)" });
+      .json({ message: "Incomplete Request: Fields Missing (including subject code, credits, and sections)" });
   }
 
-  // Check for Duplicates
-  const duplicate = await Paper.findOne({
+  // Check if this teacher already teaches this paper - if so, add sections to existing paper
+  const existingPaper = await Paper.findOne({
     department: req.body.department,
     paper: req.body.paper,
+    subjectCode: req.body.subjectCode,
     teacher: req.body.teacher,
     semester: req.body.semester,
-    sections: { $in: req.body.sections }
-  })
-    .lean()
-    .exec();
+    year: req.body.year
+  });
 
-  if (duplicate) {
-    return res.status(409).json({ message: "Paper already exists for these sections" });
+  if (existingPaper) {
+    // Add new sections to existing paper (avoid duplicates)
+    const newSections = req.body.sections.filter(section => !existingPaper.sections.includes(section));
+    
+    if (newSections.length === 0) {
+      return res.status(409).json({ message: "Paper already exists for all these sections" });
+    }
+
+    // Update existing paper with new sections
+    existingPaper.sections.push(...newSections);
+    
+    // Auto-assign students from new sections
+    const Student = require("../models/Student");
+    try {
+      const matchingStudents = await Student.find({
+        department: department,
+        year: year,
+        section: { $in: newSections }
+      }).select('_id');
+
+      if (matchingStudents.length > 0) {
+        // Add new students to existing paper (avoid duplicates)
+        const existingStudentIds = existingPaper.students.map(id => id.toString());
+        const newStudentIds = matchingStudents
+          .map(s => s._id.toString())
+          .filter(id => !existingStudentIds.includes(id));
+        
+        existingPaper.students.push(...newStudentIds.map(id => new mongoose.Types.ObjectId(id)));
+      }
+    } catch (err) {
+      console.error('Error auto-assigning students to existing paper:', err);
+    }
+
+    await existingPaper.save();
+    
+    return res.status(200).json({
+      message: `Added sections ${newSections.join(', ')} to existing paper ${req.body.paper}`,
+      paper: existingPaper
+    });
   }
 
   const PaperObj = {
     department,
     semester,
     paper,
+    subjectCode: subjectCode.toUpperCase(),
+    credits: parseInt(credits),
     year,
     students: students || [],
     teacher,
@@ -338,7 +376,10 @@ const getPapersByDepartment = asyncHandler(async (req, res) => {
   if (!req?.params?.department) {
     return res.status(400).json({ message: "Department Missing" });
   }
-  const papers = await Paper.find({ department: req.params.department }).exec();
+  const papers = await Paper.find({ department: req.params.department })
+    .populate('teacher', 'name')
+    .lean()
+    .exec();
   if (!papers || papers.length === 0) {
     return res.status(404).json({ message: `No Paper(s) found for this department` });
   }
@@ -362,6 +403,27 @@ const getPapersBySection = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: `No Paper(s) found for this section` });
   }
   res.json(papers);
+});
+
+// @desc Get All Papers (for timetable generation)
+// @route GET /paper/all
+// @access Everyone
+const getAllPapersForTimetable = asyncHandler(async (req, res) => {
+  try {
+    const papers = await Paper.find({})
+      .populate('teacher', 'name role department')
+      .select('paper department semester year sections teacher')
+      .exec();
+    
+    if (!papers || papers.length === 0) {
+      return res.status(404).json({ message: "No papers found" });
+    }
+    
+    res.json(papers);
+  } catch (error) {
+    console.error('Error fetching all papers:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // @desc Debug endpoint to check database state
@@ -397,6 +459,7 @@ const debugPapers = asyncHandler(async (req, res) => {
 module.exports = {
   addPaper,
   getAllPapers,
+  getAllPapersForTimetable, // NEW - for /paper/all
   getPapersStaff,
   getPapersStudent,
   getPapersBySection, // NEW

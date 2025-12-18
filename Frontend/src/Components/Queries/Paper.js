@@ -4,6 +4,7 @@ import UserContext from "../../Hooks/UserContext";
 import { AiFillBook } from "react-icons/ai";
 import { FaDownload } from "react-icons/fa";
 import axios from "../../config/api/axios";
+import { toast } from 'react-toastify';
 
 
 const Paper = () => {
@@ -157,9 +158,9 @@ const Paper = () => {
     } catch (err) {
       console.error('Download error:', err);
       if (err.response?.status === 404) {
-        alert('File not found on server');
+        toast.error('File not found on server');
       } else {
-        alert('Error downloading file: ' + (err.response?.data?.message || err.message));
+        toast.error('Error downloading file: ' + (err.response?.data?.message || err.message));
       }
     }
   };
@@ -167,15 +168,17 @@ const Paper = () => {
   // Choose which papers to show
   const papersToShow = user.role === "student" ? sectionPapers : paperList;
   
-  // Debug logging
-  console.log('Paper component debug:', {
-    userRole: user.role,
-    userType: user.userType,
-    userId: user._id,
-    paperListLength: paperList?.length || 0,
-    sectionPapersLength: sectionPapers?.length || 0,
-    papersToShowLength: papersToShow?.length || 0
-  });
+  // Debug logging (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Paper component debug:', {
+      userRole: user.role,
+      userType: user.userType,
+      userId: user._id,
+      paperListLength: paperList?.length || 0,
+      sectionPapersLength: sectionPapers?.length || 0,
+      papersToShowLength: papersToShow?.length || 0
+    });
+  }
 
 
 

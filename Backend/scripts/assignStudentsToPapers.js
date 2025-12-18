@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Student = require('../models/Student');
 const Paper = require('../models/Paper');
 
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test';
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority';
 
 async function assignStudentsToPapers() {
   await mongoose.connect(MONGO_URI);

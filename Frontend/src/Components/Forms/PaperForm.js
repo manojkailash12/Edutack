@@ -5,12 +5,15 @@ import UserContext from "../../Hooks/UserContext";
 import { toast } from "react-toastify";
 import { FaPlus } from "react-icons/fa";
 import ErrorStrip from "../ErrorStrip";
+import { getCreditOptions } from "../../constants/credits";
 
 const PaperForm = () => {
   const { user } = useContext(UserContext);
   const [newPaper, setNewPaper] = useState({
     department: user.department,
     paper: "",
+    subjectCode: "",
+    credits: 3,
     year: "2025-2026",
     students: [],
     semester: "Select Semester",
@@ -56,9 +59,10 @@ const PaperForm = () => {
   };
 
   const handleFormChange = (e) => {
+    const { id, value } = e.target;
     setNewPaper({
       ...newPaper,
-      [e.target.id]: e.target.value,
+      [id]: id === 'credits' ? parseInt(value) : (id === 'subjectCode' ? value.toUpperCase() : value),
     });
   };
 
@@ -89,16 +93,43 @@ const PaperForm = () => {
               value={newPaper.department}
               disabled
             />
-            <label htmlFor="paper">Paper:</label>
+            <label htmlFor="paper">Paper Name:</label>
             <input
               className="mb-4 block h-10 w-full rounded-md border-[1.5px] border-solid border-slate-400 p-1 pl-2 outline-none selection:border-slate-200 focus:border-violet-900 dark:border-slate-200 dark:caret-inherit dark:focus:border-violet-400 dark:active:border-violet-400"
               type="text"
               name="paper"
               id="paper"
+              placeholder="e.g., Computer Programming"
               value={newPaper.paper}
               required
               onChange={(e) => handleFormChange(e)}
             />
+            <label htmlFor="subjectCode">Subject Code:</label>
+            <input
+              className="mb-4 block h-10 w-full rounded-md border-[1.5px] border-solid border-slate-400 p-1 pl-2 outline-none selection:border-slate-200 focus:border-violet-900 dark:border-slate-200 dark:caret-inherit dark:focus:border-violet-400 dark:active:border-violet-400"
+              type="text"
+              name="subjectCode"
+              id="subjectCode"
+              placeholder="e.g., CSE101, EEE201"
+              value={newPaper.subjectCode}
+              required
+              onChange={(e) => handleFormChange(e)}
+              style={{ textTransform: 'uppercase' }}
+            />
+            <label htmlFor="credits">Credits:</label>
+            <select
+              className="mb-4 block h-10 w-full rounded-md border-[1.5px] border-solid border-slate-400 p-1 pl-2 outline-none selection:border-slate-200 focus:border-violet-900 dark:border-slate-200 dark:caret-inherit dark:focus:border-violet-400 dark:active:border-violet-400"
+              id="credits"
+              value={newPaper.credits}
+              required
+              onChange={(e) => handleFormChange(e)}
+            >
+              {getCreditOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <label htmlFor="semester">Semester:</label>
             <select
               className="mb-4 block h-10 w-full rounded-md border-[1.5px] border-solid border-slate-400 p-1 pl-2 outline-none selection:border-slate-200 focus:border-violet-900 dark:border-slate-200 dark:caret-inherit dark:focus:border-violet-400 dark:active:border-violet-400"

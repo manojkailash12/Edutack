@@ -349,8 +349,15 @@ const generateStudentReportPDF = (res, student, subjects, filename) => {
       
       // Enhanced data rows with better spacing
       dataToShow.forEach((subject, index) => {
-        const marks = subject.marks || subject;
-        const total = marks.total || 0;
+        // Fix: Use direct properties first, then fallback to nested marks object
+        const marks = {
+          midMarks: subject.midMarks || subject.marks?.midMarks || 0,
+          lab: subject.lab || subject.marks?.lab || 0,
+          assignmentQuiz: subject.assignmentQuiz || subject.marks?.assignmentQuiz || 0,
+          attendance: subject.attendance || subject.marks?.attendance || 0,
+          total: subject.total || subject.marks?.total || 0
+        };
+        const total = marks.total;
         const grade = calculateGrade(total);
         const percentage = ((total / 60) * 100).toFixed(1);
         

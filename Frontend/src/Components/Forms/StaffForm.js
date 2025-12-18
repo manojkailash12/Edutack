@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "../../config/api/axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 const StaffForm = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Email, 2: OTP + Details, 3: Success
+  const [departments, setDepartments] = useState([]);
   const [staff, setStaff] = useState({
     name: "",
     email: "",
@@ -20,6 +21,29 @@ const StaffForm = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Fetch departments on component mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get('/staff/departments');
+        setDepartments(response.data.departments || []);
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        // Fallback to default departments if API fails
+        setDepartments([
+          'Computer Science and Engineering (CSE)',
+          'AIML',
+          'Cyber Security',
+          'Data Science',
+          'IOT',
+          'Information Technology'
+        ]);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   const handleFormChange = (e) => {
     setStaff({
@@ -210,12 +234,11 @@ const StaffForm = () => {
             <option value="" disabled>
               Select Department
             </option>
-            <option value="Computer Science and Engineering (CSE)">Computer Science and Engineering (CSE)</option>
-            <option value="AIML">AIML</option>
-            <option value="Cyber Security">Cyber Security</option>
-            <option value="Data Science">Data Science</option>
-            <option value="IOT">IOT</option>
-            <option value="Information Technology">Information Technology</option>
+            {departments.map((dept, index) => (
+              <option key={index} value={dept}>
+                {dept}
+              </option>
+            ))}
           </select>
 
           <label className="block" htmlFor="role">

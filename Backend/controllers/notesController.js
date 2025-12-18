@@ -157,9 +157,11 @@ const updateNotes = asyncHandler(async (req, res) => {
   const noteId = req.params.noteId; // Get ID from URL parameter
   const { paper, title, body, section } = req.body;
 
-  console.log('=== UPDATE NOTES DEBUG ===');
-  console.log('Note ID:', noteId);
-  console.log('Request body:', req.body);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('=== UPDATE NOTES DEBUG ===');
+    console.log('Note ID:', noteId);
+    console.log('Request body:', req.body);
+  }
 
   // Validate noteId format
   if (!noteId || !noteId.match(/^[0-9a-fA-F]{24}$/)) {

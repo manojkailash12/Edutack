@@ -7,7 +7,6 @@ import { PiStudentThin, PiUserThin, PiSpinnerGapBold } from "react-icons/pi";
 import CircleDesign from "../Layouts/CircleDesign";
 import ErrorStrip from "../ErrorStrip";
 import ForgotPasswordForm from './ForgotPasswordForm';
-import ApiHealthCheck from '../Debug/ApiHealthCheck';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -183,17 +182,28 @@ const Login = () => {
                 </>
                 : <p className="w-full bg-violet-300 dark:bg-violet-950/90 duration-200 rounded p-4 my-12 text-center">Select User Type</p>  }
                 {error ? <ErrorStrip error={error} /> : ""}
-                <div className="text-center">
-                  <p className="inline text-slate-600 dark:text-violet-200">
-                    Click to{" "}
-                  </p>
-                  <button
-                    type="button"
-                    className="font-semibold text-violet-600 decoration-2 hover:underline focus:underline   dark:text-violet-400"
-                    onClick={() => navigate("./register/reg_student")}
+                <div className="text-center space-y-2">
+                  <div>
+                    <p className="inline text-slate-600 dark:text-violet-200">
+                      Click to{" "}
+                    </p>
+                    <button
+                      type="button"
+                      className="font-semibold text-violet-600 decoration-2 hover:underline focus:underline   dark:text-violet-400"
+                      onClick={() => navigate("./register/reg_student")}
+                      >
+                      Register
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() => navigate("./register/reg_admin")}
                     >
-                    Register
-                  </button>
+                      Register as Administrator
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-4 text-center">
                   <button
@@ -212,7 +222,6 @@ const Login = () => {
         <Navigate to="./dash" />
       )}
       {showForgot && <ForgotPasswordForm onClose={() => setShowForgot(false)} />}
-      {process.env.NODE_ENV === 'development' && <ApiHealthCheck />}
     </>
   );
 };

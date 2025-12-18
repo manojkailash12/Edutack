@@ -317,6 +317,17 @@ const Attendance = () => {
     setStudents(prev => prev.map(student => ({ ...student, status })));
   };
 
+  // Check if date is holiday or Sunday
+  const checkHolidayStatus = async (checkDate) => {
+    try {
+      const response = await axios.get(`/academic-calendar/check-holiday/${checkDate}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking holiday status:', error);
+      return { shouldHoldClasses: true }; // Default to allow if check fails
+    }
+  };
+
   // Save attendance for the selected paper, section and date
   const handleSaveAttendance = async () => {
     if (!selectedPaper || !selectedSection || !date) {
@@ -325,6 +336,22 @@ const Attendance = () => {
 
     setSaving(true);
     try {
+      // Check if the selected date is a holiday or Sunday
+      const holidayStatus = await checkHolidayStatus(date);
+      
+      if (!holidayStatus.shouldHoldClasses) {
+        let message = "Attendance cannot be marked for this date - ";
+        if (holidayStatus.isSunday) {
+          message += "Sunday (Weekly Holiday)";
+        } else if (holidayStatus.isHoliday) {
+          message += `Holiday: ${holidayStatus.holidayDetails?.title || 'Academic Holiday'}`;
+        }
+        
+        alert(message);
+        setSaving(false);
+        return;
+      }
+
       const attendanceData = {
         paper: selectedPaper,
         section: selectedSection,

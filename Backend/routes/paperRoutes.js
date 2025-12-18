@@ -3,6 +3,7 @@ const router = express.Router();
 const paperController = require("./../controllers/paperController");
 
 router.route("/").post(paperController.addPaper);
+router.route("/all").get(paperController.getAllPapersForTimetable);
 router.route("/staff/:staffId").get(paperController.getPapersStaff);
 
 router.route("/manage/:studentId").get(paperController.getAllPapers);

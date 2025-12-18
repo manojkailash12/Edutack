@@ -1,22 +1,13 @@
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
 import axios from "../../config/api/axios";
 import Loading from "../Layouts/Loading";
 import * as XLSX from "xlsx";
-// import html2canvas from "html2canvas"; // Unused for now
 import { jsPDF } from "jspdf";
 import UserContext from "../../Hooks/UserContext";
+import { toast } from 'react-toastify';
 
-// Define constants at module level to avoid hoisting issues
-const DAYS = Object.freeze(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]);
-const HOURS = Object.freeze(["1", "2", "3", "4"]);
-
-// Time slots for display
-const TIME_SLOTS = Object.freeze([
-  "9:30 - 10:20",
-  "10:20 - 11:10", 
-  "1:20 - 2:10",
-  "2:10 - 3:00"
-]);
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const HOURS = ["1", "2", "3", "4"];
 
 const getColor = (str) => {
   let hash = 0;
@@ -40,8 +31,6 @@ const TimeScheduleForm = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState([]);
-  const [showPrint, setShowPrint] = useState(false);
-  const sectionRefs = useRef({});
 
   useEffect(() => {
     if (!isHod) return;
@@ -52,9 +41,8 @@ const TimeScheduleForm = () => {
         setSemesters(res.data.semesters || []);
         setYears(res.data.years || []);
       } catch (err) {
-        setDepartments([]);
-        setSemesters([]);
-        setYears([]);
+        console.error('Error fetching fields:', err);
+        setError(`Failed to load form data: ${err.message}`);
       }
     };
     fetchFields();
@@ -65,36 +53,22 @@ const TimeScheduleForm = () => {
     if (!isHod) return;
     setLoading(true);
     setError("");
-    setMessage("Initializing timetable generation...");
+    setMessage("Generating timetable...");
     setTimetable(null);
     setSummary([]);
+    
     try {
-      setMessage("Checking for existing timetable...");
-      await axios.get(`/time-schedule/timetable/${encodeURIComponent(department)}/${encodeURIComponent(semester)}/${encodeURIComponent(year)}`);
-      
-      setMessage("Generating new timetable... This may take up to 30 seconds.");
       const res = await axios.post(`/time-schedule/generate/${encodeURIComponent(department)}/${encodeURIComponent(semester)}/${encodeURIComponent(year)}`, {}, {
-        timeout: 30000 // 30 second timeout
+        timeout: 30000
       });
       
-      // Enhanced message with coverage info
-      let displayMessage = res.data.message;
-      if (res.data.coveragePercentage) {
-        displayMessage += ` (${res.data.coveragePercentage}% coverage)`;
-      }
-      if (res.data.warnings && res.data.warnings.length > 0) {
-        displayMessage += `\n\nWarnings:\n${res.data.warnings.join('\n')}`;
-      }
-      if (res.data.skippedSlots && res.data.skippedSlots.length > 0) {
-        displayMessage += `\n\nNote: ${res.data.skippedSlots.length} slots could not be optimally filled due to constraints.`;
-      }
+      setMessage(res.data.message);
       
-      setMessage(displayMessage);
+      const viewRes = await axios.get(`/time-schedule/timetable/${encodeURIComponent(department)}/${encodeURIComponent(semester)}/${encodeURIComponent(year)}`);
+      setTimetable(viewRes.data.timetable);
       
-      const viewRes2 = await axios.get(`/time-schedule/timetable/${encodeURIComponent(department)}/${encodeURIComponent(semester)}/${encodeURIComponent(year)}`);
-      setTimetable(viewRes2.data.timetable);
       const allSlots = [];
-      Object.entries(viewRes2.data.timetable).forEach(([section, sectionGrid]) => {
+      Object.entries(viewRes.data.timetable).forEach(([section, sectionGrid]) => {
         DAYS.forEach(day => {
           HOURS.forEach(hour => {
             const slot = sectionGrid[day][hour];
@@ -111,31 +85,16 @@ const TimeScheduleForm = () => {
         });
       });
       setSummary(allSlots);
+      
     } catch (err) {
-      let errorMessage = err.response?.data?.message || err.message || "Error generating timetable";
-      
-      // Add more detailed error information if available
-      if (err.response?.data?.paperDetails) {
-        errorMessage += `\n\nPaper Details:\n${err.response.data.paperDetails.map(p => 
-          `- ${p.paper}: Teacher=${p.teacherName || 'None'}, Approved=${p.teacherApproved}, Sections=${p.sections?.join(',') || 'None'}`
-        ).join('\n')}`;
-      }
-      
-      if (err.response?.data?.searchedFor) {
-        errorMessage += `\n\nSearched for: ${JSON.stringify(err.response.data.searchedFor)}`;
-      }
-      
-      setError(`${errorMessage} (Status: ${err.response?.status || 'Unknown'})`);
+      setError(err.response?.data?.message || err.message || "Error generating timetable");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDownload = () => {
-    if (!timetable) {
-      alert("No timetable data available to export");
-      return;
-    }
+    if (!timetable) return;
     
     try {
       const wb = XLSX.utils.book_new();
@@ -155,97 +114,19 @@ const TimeScheduleForm = () => {
       });
       XLSX.writeFile(wb, `Timetable_${department}_${semester}_${year}.xlsx`);
     } catch (error) {
-      alert('Failed to generate Excel file: ' + error.message);
+      toast.error('Failed to generate Excel file: ' + error.message);
     }
   };
 
-  const handlePrint = () => {
-    setShowPrint(true);
-    setTimeout(() => {
-      window.print();
-      setShowPrint(false);
-    }, 100);
-  };
-
-  const handleDownloadSimplePDF = () => {
+  const handleDownloadPDF = () => {
     if (!timetable) {
-      alert("No timetable data available to export");
+      toast.error("No timetable data available to export");
       return;
     }
 
     try {
-      // Simple PDF generation without complex formatting
       const doc = new jsPDF('landscape', 'mm', 'a4');
-      
-      doc.setFontSize(16);
-      doc.text('EDUTRACK - Timetable', 20, 20);
-      doc.setFontSize(12);
-      doc.text(`${department} - ${semester} - ${year}`, 20, 30);
-      
-      let yPos = 50;
-      
-      Object.keys(timetable).forEach(section => {
-        if (yPos > 180) {
-          doc.addPage();
-          yPos = 20;
-        }
-        
-        doc.setFontSize(14);
-        doc.text(`Section: ${section}`, 20, yPos);
-        yPos += 10;
-        
-        // Simple table
-        doc.setFontSize(8);
-        doc.text('Day/Hour', 20, yPos);
-        HOURS.forEach((hour, i) => {
-          doc.text(`H${hour}`, 60 + (i * 40), yPos);
-        });
-        yPos += 8;
-        
-        DAYS.forEach(day => {
-          doc.text(day, 20, yPos);
-          HOURS.forEach((hour, i) => {
-            const slot = timetable[section]?.[day]?.[hour];
-            const text = slot?.paper?.paper || 'Free';
-            doc.text(text.substring(0, 8), 60 + (i * 40), yPos);
-          });
-          yPos += 6;
-        });
-        
-        yPos += 10;
-      });
-      
-      doc.save(`Simple_Timetable_${department}_${semester}_${year}.pdf`);
-    } catch (error) {
-      alert('PDF generation failed. Please try Excel download instead.');
-    }
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!timetable) {
-      alert("No timetable data available to export");
-      return;
-    }
-    
-    // Validate timetable structure
-    const sectionKeys = Object.keys(timetable);
-    if (sectionKeys.length === 0) {
-      alert("Timetable is empty - no sections found");
-      return;
-    }
-    
-
-    
-    try {
-      // Initialize jsPDF with explicit configuration
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
       const pageWidth = doc.internal.pageSize.getWidth();
-      // const pageHeight = doc.internal.pageSize.getHeight(); // Unused for now
       
       const sectionKeys = Object.keys(timetable);
       
@@ -256,198 +137,144 @@ const TimeScheduleForm = () => {
           doc.addPage();
         }
         
-        try {
-          // Title
-          doc.setFontSize(20);
-          doc.setFont("helvetica", "bold");
-          doc.text("EDUTRACK", pageWidth / 2, 20, { align: 'center' });
+        // Title
+        doc.setFontSize(18);
+        doc.setFont("helvetica", "bold");
+        doc.text("EDUTRACK - Timetable", pageWidth / 2, 20, { align: 'center' });
+        
+        doc.setFontSize(14);
+        doc.text(`${department} - ${semester} - ${year}`, pageWidth / 2, 30, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.text(`Section: ${section}`, pageWidth / 2, 40, { align: 'center' });
+        
+        // Table setup
+        const startY = 55;
+        const rowHeight = 15;
+        const margin = 20;
+        const tableWidth = pageWidth - (2 * margin);
+        
+        // Column widths
+        const timeColWidth = 40;
+        const dayColWidth = (tableWidth - timeColWidth) / DAYS.length;
+        
+        // Draw table header
+        doc.setFillColor(70, 130, 180);
+        doc.rect(margin, startY, tableWidth, rowHeight, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        
+        // Header - Time column
+        doc.text("Time/Day", margin + timeColWidth/2, startY + 10, { align: 'center' });
+        
+        // Header - Day columns
+        DAYS.forEach((day, index) => {
+          const x = margin + timeColWidth + (index * dayColWidth);
+          doc.text(day, x + dayColWidth/2, startY + 10, { align: 'center' });
+        });
+        
+        // Table data rows
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        
+        HOURS.forEach((hour, hourIndex) => {
+          const y = startY + (hourIndex + 1) * rowHeight;
           
-          doc.setFontSize(16);
-          doc.text(`Timetable - ${department} - ${semester} - ${year}`, pageWidth / 2, 35, { align: 'center' });
-          
-          doc.setFontSize(14);
-          doc.setFont("helvetica", "bold");
-          doc.text(`Section: ${section}`, pageWidth / 2, 50, { align: 'center' });
-          
-          // Table setup
-          const startY = 65;
-          const rowHeight = 18;
-          const margin = 15;
-          const tableWidth = pageWidth - (2 * margin);
-          
-          // Column widths - optimized for landscape with 4 hours
-          const timeColWidth = 35;
-          const dayColWidth = (tableWidth - timeColWidth) / DAYS.length;
-          
-          // Draw table header
-          doc.setFillColor(63, 81, 181);
-          doc.rect(margin, startY, tableWidth, rowHeight, 'F');
-          
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(11);
-          doc.setFont("helvetica", "bold");
-          
-          // Header - Time column
-          doc.text("Time Slot", margin + timeColWidth/2, startY + 12, { align: 'center' });
-          
-          // Header - Day columns
-          DAYS.forEach((day, index) => {
-            const x = margin + timeColWidth + (index * dayColWidth);
-            doc.text(day, x + dayColWidth/2, startY + 12, { align: 'center' });
-          });
-          
-          // Draw header borders
-          doc.setDrawColor(255, 255, 255);
-          doc.setLineWidth(0.5);
-          
-          // Vertical lines in header
-          for (let i = 0; i <= DAYS.length; i++) {
-            const x = margin + timeColWidth + (i * dayColWidth);
-            doc.line(x, startY, x, startY + rowHeight);
+          // Alternating row colors
+          if (hourIndex % 2 === 0) {
+            doc.setFillColor(245, 245, 245);
+            doc.rect(margin, y, tableWidth, rowHeight, 'F');
           }
-          doc.line(margin + timeColWidth, startY, margin + timeColWidth, startY + rowHeight);
           
-          // Table data rows
-          doc.setTextColor(0, 0, 0);
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(8);
+          // Time slot column
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          doc.text(`Hour ${hour}`, margin + timeColWidth/2, y + 6, { align: 'center' });
+          doc.setFontSize(7);
+          doc.text(`9:30-10:20`, margin + timeColWidth/2, y + 11, { align: 'center' });
           
-          HOURS.forEach((hour, hourIndex) => {
-            const y = startY + (hourIndex + 1) * rowHeight;
+          // Day columns
+          DAYS.forEach((day, dayIndex) => {
+            const x = margin + timeColWidth + (dayIndex * dayColWidth);
             
-            // Alternating row colors
-            if (hourIndex % 2 === 0) {
-              doc.setFillColor(248, 249, 250);
-              doc.rect(margin, y, tableWidth, rowHeight, 'F');
-            }
+            const slot = timetable[section]?.[day]?.[hour];
             
-            // Time slot column
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.text(`Hour ${hour}`, margin + timeColWidth/2, y + 8, { align: 'center' });
-            doc.setFontSize(7);
-            const timeSlot = TIME_SLOTS[hourIndex] || `Hour ${hour}`;
-            doc.text(timeSlot, margin + timeColWidth/2, y + 14, { align: 'center' });
-            
-            // Day columns
-            DAYS.forEach((day, dayIndex) => {
-              const x = margin + timeColWidth + (dayIndex * dayColWidth);
+            if (slot && slot.paper) {
+              // Subject name
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(8);
+              const subjectText = (slot.paper?.paper || 'N/A').toString();
+              const shortSubject = subjectText.length > 10 ? subjectText.substring(0, 10) + '...' : subjectText;
+              doc.text(shortSubject, x + dayColWidth/2, y + 6, { align: 'center' });
               
-              // Safe access to slot data with multiple fallback patterns
-              let slot = null;
-              try {
-                slot = timetable[section]?.[day]?.[hour] || 
-                       timetable[section]?.[day]?.[`hour${hour}`] ||
-                       timetable[section]?.[day]?.[parseInt(hour)];
-              } catch (e) {
-                // Silently handle data access errors
-              }
-              
-              if (slot && (slot.paper || slot.subject)) {
-                try {
-                  // Subject name (bold)
-                  doc.setFont("helvetica", "bold");
-                  doc.setFontSize(8);
-                  const subjectText = (slot.paper?.paper || slot.subject || slot.paper || 'N/A').toString();
-                  
-                  // Smart text wrapping for long subject names
-                  const maxLength = 12;
-                  const lines = [];
-                  if (subjectText.length > maxLength) {
-                    const words = subjectText.split(' ');
-                    let currentLine = '';
-                    words.forEach(word => {
-                      if ((currentLine + word).length <= maxLength) {
-                        currentLine += (currentLine ? ' ' : '') + word;
-                      } else {
-                        if (currentLine) lines.push(currentLine);
-                        currentLine = word;
-                      }
-                    });
-                    if (currentLine) lines.push(currentLine);
-                  } else {
-                    lines.push(subjectText);
-                  }
-                  
-                  // Display subject lines
-                  lines.forEach((line, lineIndex) => {
-                    doc.text(line, x + 2, y + 6 + (lineIndex * 4));
-                  });
-                  
-                  // Teacher name (normal, smaller)
-                  doc.setFont("helvetica", "normal");
-                  doc.setFontSize(6);
-                  const teacherText = (slot.teacher?.name || slot.teacherName || slot.teacher || 'N/A').toString();
-                  const teacherDisplay = teacherText.length > 15 ? teacherText.substring(0, 15) + '...' : teacherText;
-                  doc.text(`T: ${teacherDisplay}`, x + 2, y + 6 + (lines.length * 4) + 2);
-                } catch (cellError) {
-                  // Fallback to simple text
-                  doc.setFont("helvetica", "normal");
-                  doc.setFontSize(7);
-                  doc.text('Error', x + 2, y + 8);
-                }
-              } else {
-                // Empty slot
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                doc.text('Free', x + dayColWidth/2, y + 10, { align: 'center' });
-                doc.setTextColor(0, 0, 0);
-              }
-            });
-            
-            // Draw row borders
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.3);
-            
-            // Horizontal line
-            doc.line(margin, y + rowHeight, margin + tableWidth, y + rowHeight);
-            
-            // Vertical lines
-            for (let i = 0; i <= DAYS.length; i++) {
-              const x = margin + timeColWidth + (i * dayColWidth);
-              doc.line(x, y, x, y + rowHeight);
+              // Teacher name
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(6);
+              const teacherText = (slot.teacher?.name || 'N/A').toString();
+              const shortTeacher = teacherText.length > 12 ? teacherText.substring(0, 12) + '...' : teacherText;
+              doc.text(shortTeacher, x + dayColWidth/2, y + 11, { align: 'center' });
+            } else {
+              // Empty slot
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(8);
+              doc.setTextColor(150, 150, 150);
+              doc.text('Free', x + dayColWidth/2, y + 8, { align: 'center' });
+              doc.setTextColor(0, 0, 0);
             }
-            doc.line(margin + timeColWidth, y, margin + timeColWidth, y + rowHeight);
           });
-          
-          // Outer table border
-          doc.setDrawColor(0, 0, 0);
-          doc.setLineWidth(0.8);
-          doc.rect(margin, startY, tableWidth, (HOURS.length + 1) * rowHeight);
-          
-          // Left border for time column
-          doc.line(margin + timeColWidth, startY, margin + timeColWidth, startY + (HOURS.length + 1) * rowHeight);
-          
-        } catch (sectionError) {
-          // Continue with next section
+        });
+        
+        // Draw table borders
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        
+        // Outer border
+        doc.rect(margin, startY, tableWidth, (HOURS.length + 1) * rowHeight);
+        
+        // Horizontal lines
+        for (let i = 0; i <= HOURS.length; i++) {
+          const y = startY + i * rowHeight;
+          doc.line(margin, y, margin + tableWidth, y);
         }
+        
+        // Vertical lines
+        for (let i = 0; i <= DAYS.length; i++) {
+          const x = margin + timeColWidth + (i * dayColWidth);
+          doc.line(x, startY, x, startY + (HOURS.length + 1) * rowHeight);
+        }
+        
+        // Time column separator
+        doc.line(margin + timeColWidth, startY, margin + timeColWidth, startY + (HOURS.length + 1) * rowHeight);
       }
       
-      const fileName = `Timetable_${department}_${semester}_${year}_${new Date().toISOString().slice(0,10)}.pdf`;
-      doc.save(fileName);
-      
+      doc.save(`Timetable_${department}_${semester}_${year}.pdf`);
     } catch (error) {
-      let errorMessage = "Failed to generate PDF";
-      if (error.message) {
-        errorMessage += `: ${error.message}`;
-      }
-      
-      // Offer alternative download options
-      const useAlternative = window.confirm(`${errorMessage}\n\nWould you like to download as Excel instead?`);
-      if (useAlternative) {
-        handleDownload(); // Download as Excel
-      }
+      console.error('PDF generation error:', error);
+      toast.error('PDF generation failed. Please try Excel download instead.');
     }
   };
+
+  if (!user) {
+    return (
+      <main className="p-4">
+        <div className="flex justify-center items-center h-64">
+          <Loading />
+          <span className="ml-4">Loading user data...</span>
+        </div>
+      </main>
+    );
+  }
 
   if (!isHod) {
     return <main className="p-4"><div className="text-red-600">Not authorized. HOD only.</div></main>;
   }
 
   return (
-    <main className={showPrint ? "print:bg-white" : "p-4"}>
+    <main className="p-4">
       <h2 className="mb-4 text-3xl font-bold text-violet-900 dark:text-slate-200">Generate Complete Timetable (HOD)</h2>
+      
       <form className="mb-6 flex flex-wrap gap-4 items-end" onSubmit={handleGenerate}>
         <div>
           <label className="block mb-1 font-medium">Department</label>
@@ -480,29 +307,31 @@ const TimeScheduleForm = () => {
         {timetable && (
           <>
             <button type="button" onClick={handleDownload} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg ml-2">Download Excel</button>
-            <button type="button" onClick={handlePrint} className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg ml-2">Print View</button>
             <button type="button" onClick={handleDownloadPDF} className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg ml-2">Download PDF</button>
-            <button type="button" onClick={handleDownloadSimplePDF} className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg ml-2">Simple PDF</button>
           </>
         )}
       </form>
+      
       {loading && (
         <div className="flex items-center justify-center p-4">
           <Loading />
-          <span className="ml-2 text-blue-600">Generating timetable... Please wait up to 30 seconds.</span>
+          <span className="ml-2 text-blue-600">Generating timetable...</span>
         </div>
       )}
+      
       {error && <div className="text-red-600 mb-4">{error}</div>}
+      
       {message && (
-        <div className="text-green-700 mb-4 whitespace-pre-line bg-green-50 p-3 rounded-lg border border-green-200">
+        <div className="text-green-700 mb-4 bg-green-50 p-3 rounded-lg border border-green-200">
           {message}
         </div>
       )}
+      
       {summary.length > 0 && (
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-2">Assignment Summary</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-400 dark:border-slate-600 text-xs">
+            <table className="min-w-full border border-slate-400 text-xs">
               <thead>
                 <tr>
                   <th className="border px-2 py-1">Section</th>
@@ -527,13 +356,14 @@ const TimeScheduleForm = () => {
           </div>
         </div>
       )}
+      
       {timetable && (
-        <div className={showPrint ? "print:bg-white" : "overflow-x-auto"}>
+        <div className="overflow-x-auto">
           <h3 className="mb-2 text-xl font-semibold">Generated Timetable</h3>
           {Object.keys(timetable).map(section => (
-            <div key={section} className="mb-6" ref={el => (sectionRefs.current[section] = el)}>
-              <h4 className="font-bold text-violet-800 dark:text-violet-300">Section: {section}</h4>
-              <table className="min-w-full border border-slate-400 dark:border-slate-600 mb-2 text-xs">
+            <div key={section} className="mb-6">
+              <h4 className="font-bold text-violet-800">Section: {section}</h4>
+              <table className="min-w-full border border-slate-400 mb-2 text-xs">
                 <thead>
                   <tr>
                     <th className="border border-slate-400 px-2 py-1">Day/Hour</th>
@@ -554,7 +384,7 @@ const TimeScheduleForm = () => {
                             {slot ? (
                               <div>
                                 <div className="font-medium" style={color ? { color, fontWeight: 'bold' } : { fontWeight: 'bold' }}>{slot.paper?.paper}</div>
-                                <div className="text-xs text-gray-600 dark:text-gray-300"><b>Teacher: {slot.teacher?.name}</b></div>
+                                <div className="text-xs text-gray-600"><b>Teacher: {slot.teacher?.name}</b></div>
                               </div>
                             ) : (
                               <span className="text-red-400 font-bold">Unassigned</span>

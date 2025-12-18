@@ -23,7 +23,10 @@ router.route("/available-papers/:teacherId").get(timeScheduleController.getAvail
 // Add new time schedule (HOD only)
 router.route("/").post(fakeHOD, timeScheduleController.addTimeSchedule);
 
-// Generate complete timetable (HOD only)
+// Generate complete timetable (HOD only) - New enhanced version
+router.post("/generate", fakeHOD, timeScheduleController.generateTimetable);
+
+// Generate complete timetable (HOD only) - Legacy version
 router.post(
   "/generate/:department/:semester/:year",
   fakeHOD,
@@ -51,6 +54,12 @@ router.route("/:id").delete(fakeHOD, timeScheduleController.deleteTimeSchedule);
 // Get time schedule by ID
 router.route("/:id").get(timeScheduleController.getTimeSchedule);
 
+// Create single time schedule (HOD only)
+router.post("/single", fakeHOD, timeScheduleController.createTimeSchedule);
+
+// Get timetable statistics
+router.route("/stats/:department").get(timeScheduleController.getTimetableStats);
+
 // Debug endpoint to list all papers for a department, semester, and year
 router.get("/debug/list-papers/:department/:semester/:year", async (req, res) => {
   const { department, semester, year } = req.params;
@@ -73,10 +82,23 @@ router.get("/debug/list-all-papers", async (req, res) => {
 });
 
 // Debug endpoint to list all unique values for department, semester, and year in the papers collection
+// Filter departments to only show Computer Science and Engineering for timetable
 router.get("/debug/list-unique-paper-fields", async (req, res) => {
   try {
     const Paper = require("../models/Paper");
-    const departments = await Paper.distinct("department");
+    const allDepartments = await Paper.distinct("department");
+    
+    // Filter to only show Computer Science and Engineering related departments for timetable
+    const timetableDepartments = allDepartments.filter(dept => 
+      dept === 'Computer Science and Engineering' || 
+      dept === 'Computer Science and Engineering (CSE)' ||
+      dept === 'CSE' ||
+      dept === 'Computer Science'
+    );
+    
+    // If no CSE departments found, default to Computer Science and Engineering
+    const departments = timetableDepartments.length > 0 ? timetableDepartments : ['Computer Science and Engineering'];
+    
     const semesters = await Paper.distinct("semester");
     const years = await Paper.distinct("year");
     res.json({ departments, semesters, years });

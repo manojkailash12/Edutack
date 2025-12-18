@@ -6,7 +6,10 @@ const Paper = require("../models/Paper");
 const TimeSchedule = require("../models/TimeSchedule");
 const Staff = require("../models/Staff");
 const SemesterSettings = require("../models/SemesterSettings");
+const StudentLeave = require("../models/StudentLeave");
+const AcademicCalendar = require("../models/AcademicCalendar");
 const { generateAttendanceReportPDF } = require('../services/pdfService');
+const cache = require('../utils/cache');
 
 // @desc Add Attendance with Strict Time Validation
 // @route POST /attendance
@@ -25,6 +28,28 @@ const createNewAttendance = asyncHandler(async (req, res) => {
   if (!paper || !date || !students || !teacherId || !section) {
     console.log('Missing required fields');
     return res.status(400).json({ message: "All fields are required including section" });
+  }
+
+  // Check if the date is a holiday or Sunday
+  const shouldHoldClasses = await AcademicCalendar.shouldHoldClasses(date);
+  if (!shouldHoldClasses) {
+    const isSunday = AcademicCalendar.isSunday(date);
+    const holiday = await AcademicCalendar.isHoliday(date);
+    
+    let message = "Attendance cannot be marked today - ";
+    if (isSunday) {
+      message += "Sunday (Weekly Holiday)";
+    } else if (holiday) {
+      message += `Holiday: ${holiday.title}`;
+    }
+    
+    console.log('Attendance blocked:', message);
+    return res.status(400).json({ 
+      message,
+      isHoliday: true,
+      holidayDetails: holiday,
+      isSunday
+    });
   }
 
   // Validate that the teacher actually teaches this paper and section
@@ -154,20 +179,65 @@ const createNewAttendance = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "No valid students provided (must be registered students or manual entries with rollNo and name)" });
   }
 
+  // Check for approved student leaves on this date
+  const attendanceDate = new Date(date);
+  const approvedLeaves = await StudentLeave.find({
+    status: 'Approved',
+    startDate: { $lte: attendanceDate },
+    endDate: { $gte: attendanceDate },
+    department: paperDoc.department,
+    section: section
+  }).lean();
+
+  console.log(`Found ${approvedLeaves.length} approved leaves for ${date} in ${paperDoc.department} section ${section}`);
+
+  // Create a map of students on approved leave
+  const studentsOnLeave = new Map();
+  approvedLeaves.forEach(leave => {
+    studentsOnLeave.set(leave.rollNo, {
+      leaveType: leave.leaveType,
+      reason: leave.reason
+    });
+  });
+
+  // Update student statuses based on approved leaves
+  const processedStudents = filteredStudents.map(student => {
+    if (studentsOnLeave.has(student.rollNo)) {
+      const leaveInfo = studentsOnLeave.get(student.rollNo);
+      console.log(`Student ${student.rollNo} is on approved ${leaveInfo.leaveType} leave`);
+      return {
+        ...student,
+        status: 'on_leave',
+        leaveType: leaveInfo.leaveType,
+        leaveReason: leaveInfo.reason
+      };
+    }
+    return student;
+  });
+
+  // Count students automatically marked as on leave
+  const studentsOnLeaveCount = processedStudents.filter(s => s.status === 'on_leave').length;
+
   const attendanceObj = {
     paper,
     date,
     section,
-    students: filteredStudents,
+    students: processedStudents,
     teacherId
   };
 
   const attendance = await Attendance.create(attendanceObj);
 
   if (attendance) {
+    // Invalidate department attendance cache when new attendance is added
+    const cacheKey = `dept_attendance_${paperDoc.department}`;
+    cache.delete(cacheKey);
+    console.log(`🗑️ Invalidated cache for department: ${paperDoc.department}`);
+
     res.status(201).json({
       message: `Attendance added for ${date} Section ${section}`,
-      recordedCount: filteredStudents.length,
+      recordedCount: processedStudents.length,
+      studentsOnLeaveCount: studentsOnLeaveCount,
       attendance
     });
   } else {
@@ -301,7 +371,25 @@ const getDepartmentAttendanceReport = asyncHandler(async (req, res) => {
   }
 
   try {
-    const attendanceReport = await Attendance.aggregate([
+    const department = req.params.department;
+    const cacheKey = `dept_attendance_${department}`;
+    
+    // Check cache first
+    const cachedResult = cache.get(cacheKey);
+    if (cachedResult) {
+      console.log(`⚡ Serving cached attendance report for department: ${department}`);
+      return res.json({
+        ...cachedResult,
+        fromCache: true,
+        cachedAt: new Date().toISOString()
+      });
+    }
+
+    console.log(`🚀 Fetching fresh attendance report for department: ${department}`);
+    const startTime = Date.now();
+
+    // Optimized single aggregation pipeline with facets for better performance
+    const result = await Attendance.aggregate([
       {
         $unwind: "$students"
       },
@@ -310,185 +398,201 @@ const getDepartmentAttendanceReport = asyncHandler(async (req, res) => {
           from: "students",
           localField: "students.student",
           foreignField: "_id",
-          as: "studentInfo"
+          as: "studentInfo",
+          // Optimize lookup with pipeline to reduce data transfer
+          pipeline: [
+            {
+              $match: {
+                department: req.params.department
+              }
+            },
+            {
+              $project: {
+                name: 1,
+                rollNo: 1,
+                section: 1,
+                year: 1,
+                department: 1
+              }
+            }
+          ]
         }
       },
       {
         $unwind: "$studentInfo"
       },
+      // Use facet to calculate all statistics in one pass
       {
-        $match: {
-          "studentInfo.department": req.params.department
-        }
-      },
-      {
-        $group: {
-          _id: {
-            studentId: "$students.student",
-            studentName: "$studentInfo.name",
-            rollNo: "$studentInfo.rollNo",
-            section: "$studentInfo.section",
-            year: "$studentInfo.year"
-          },
-          totalClasses: { $sum: 1 },
-          presentClasses: {
-            $sum: {
-              $cond: [{ $eq: ["$students.status", "present"] }, 1, 0]
+        $facet: {
+          // Individual student reports
+          individualReport: [
+            {
+              $group: {
+                _id: {
+                  studentId: "$students.student",
+                  studentName: "$studentInfo.name",
+                  rollNo: "$studentInfo.rollNo",
+                  section: "$studentInfo.section",
+                  year: "$studentInfo.year"
+                },
+                totalClasses: { $sum: 1 },
+                presentClasses: {
+                  $sum: {
+                    $cond: [{ $eq: ["$students.status", "present"] }, 1, 0]
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                studentId: "$_id.studentId",
+                studentName: "$_id.studentName",
+                rollNo: "$_id.rollNo",
+                section: "$_id.section",
+                year: "$_id.year",
+                totalClasses: 1,
+                presentClasses: 1,
+                absentClasses: { $subtract: ["$totalClasses", "$presentClasses"] },
+                attendancePercentage: {
+                  $round: [
+                    {
+                      $multiply: [
+                        { 
+                          $cond: [
+                            { $eq: ["$totalClasses", 0] },
+                            0,
+                            { $divide: ["$presentClasses", "$totalClasses"] }
+                          ]
+                        },
+                        100
+                      ]
+                    },
+                    2
+                  ]
+                }
+              }
+            },
+            {
+              $sort: { section: 1, rollNo: 1 }
             }
-          }
+          ],
+          // Department statistics
+          departmentStats: [
+            {
+              $group: {
+                _id: null,
+                totalClasses: { $sum: 1 },
+                presentClasses: {
+                  $sum: {
+                    $cond: [{ $eq: ["$students.status", "present"] }, 1, 0]
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                totalClasses: 1,
+                presentClasses: 1,
+                absentClasses: { $subtract: ["$totalClasses", "$presentClasses"] },
+                averageAttendance: {
+                  $round: [
+                    {
+                      $multiply: [
+                        { 
+                          $cond: [
+                            { $eq: ["$totalClasses", 0] },
+                            0,
+                            { $divide: ["$presentClasses", "$totalClasses"] }
+                          ]
+                        },
+                        100
+                      ]
+                    },
+                    2
+                  ]
+                }
+              }
+            }
+          ],
+          // Section-wise statistics
+          sectionStats: [
+            {
+              $group: {
+                _id: "$studentInfo.section",
+                totalClasses: { $sum: 1 },
+                presentClasses: {
+                  $sum: {
+                    $cond: [{ $eq: ["$students.status", "present"] }, 1, 0]
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 0,
+                section: "$_id",
+                totalClasses: 1,
+                presentClasses: 1,
+                absentClasses: { $subtract: ["$totalClasses", "$presentClasses"] },
+                averageAttendance: {
+                  $round: [
+                    {
+                      $multiply: [
+                        { 
+                          $cond: [
+                            { $eq: ["$totalClasses", 0] },
+                            0,
+                            { $divide: ["$presentClasses", "$totalClasses"] }
+                          ]
+                        },
+                        100
+                      ]
+                    },
+                    2
+                  ]
+                }
+              }
+            },
+            {
+              $sort: { section: 1 }
+            }
+          ]
         }
-      },
-      {
-        $project: {
-          _id: 0,
-          studentId: "$_id.studentId",
-          studentName: "$_id.studentName",
-          rollNo: "$_id.rollNo",
-          section: "$_id.section",
-          year: "$_id.year",
-          totalClasses: 1,
-          presentClasses: 1,
-          absentClasses: { $subtract: ["$totalClasses", "$presentClasses"] },
-          attendancePercentage: {
-            $round: [
-              {
-                $multiply: [
-                  { $divide: ["$presentClasses", "$totalClasses"] },
-                  100
-                ]
-              },
-              2
-            ]
-          }
-        }
-      },
-      {
-        $sort: { section: 1, rollNo: 1 }
       }
     ]);
 
-    // Calculate department statistics
-    const departmentStats = await Attendance.aggregate([
-      {
-        $unwind: "$students"
-      },
-      {
-        $lookup: {
-          from: "students",
-          localField: "students.student",
-          foreignField: "_id",
-          as: "studentInfo"
-        }
-      },
-      {
-        $unwind: "$studentInfo"
-      },
-      {
-        $match: {
-          "studentInfo.department": req.params.department
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalClasses: { $sum: 1 },
-          presentClasses: {
-            $sum: {
-              $cond: [{ $eq: ["$students.status", "present"] }, 1, 0]
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          totalClasses: 1,
-          presentClasses: 1,
-          absentClasses: { $subtract: ["$totalClasses", "$presentClasses"] },
-          averageAttendance: {
-            $round: [
-              {
-                $multiply: [
-                  { $divide: ["$presentClasses", "$totalClasses"] },
-                  100
-                ]
-              },
-              2
-            ]
-          }
-        }
-      }
-    ]);
+    const endTime = Date.now();
+    console.log(`⚡ Attendance report generated in ${endTime - startTime}ms`);
 
-    // Section-wise statistics
-    const sectionStats = await Attendance.aggregate([
-      {
-        $unwind: "$students"
-      },
-      {
-        $lookup: {
-          from: "students",
-          localField: "students.student",
-          foreignField: "_id",
-          as: "studentInfo"
-        }
-      },
-      {
-        $unwind: "$studentInfo"
-      },
-      {
-        $match: {
-          "studentInfo.department": req.params.department
-        }
-      },
-      {
-        $group: {
-          _id: "$studentInfo.section",
-          totalClasses: { $sum: 1 },
-          presentClasses: {
-            $sum: {
-              $cond: [{ $eq: ["$students.status", "present"] }, 1, 0]
-            }
-          }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          section: "$_id",
-          totalClasses: 1,
-          presentClasses: 1,
-          absentClasses: { $subtract: ["$totalClasses", "$presentClasses"] },
-          averageAttendance: {
-            $round: [
-              {
-                $multiply: [
-                  { $divide: ["$presentClasses", "$totalClasses"] },
-                  100
-                ]
-              },
-              2
-            ]
-          }
-        }
-      },
-      {
-        $sort: { section: 1 }
-      }
-    ]);
+    // Extract results from facet
+    const attendanceReport = result[0]?.individualReport || [];
+    const departmentStats = result[0]?.departmentStats?.[0] || {
+      totalClasses: 0,
+      presentClasses: 0,
+      absentClasses: 0,
+      averageAttendance: 0
+    };
+    const sectionStats = result[0]?.sectionStats || [];
 
-    res.json({
-      individualReport: attendanceReport,
-      departmentStats: departmentStats[0] || {
-        totalClasses: 0,
-        presentClasses: 0,
-        absentClasses: 0,
-        averageAttendance: 0
-      },
+    const responseData = {
+      attendanceReport, // Changed from individualReport to attendanceReport for frontend compatibility
+      departmentStats,
       sectionStats,
-      department: req.params.department
-    });
+      department: req.params.department,
+      generatedAt: new Date().toISOString(),
+      queryTime: `${endTime - startTime}ms`,
+      fromCache: false
+    };
+
+    // Cache the result for 3 minutes (attendance data doesn't change frequently)
+    cache.set(cacheKey, responseData, 3 * 60 * 1000);
+    console.log(`💾 Cached attendance report for department: ${department}`);
+
+    res.json(responseData);
   } catch (error) {
+    console.error('❌ Error generating department attendance report:', error);
     res.status(500).json({ message: "Error generating department attendance report", error: error.message });
   }
 });

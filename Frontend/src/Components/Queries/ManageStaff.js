@@ -30,8 +30,6 @@ const ManageStaff = () => {
   }, [user]);
 
   const deleteStaff = async (staffId) => {
-    if (!window.confirm('Are you sure you want to delete this staff member?')) return;
-    
     try {
       await axios.delete(`/staff/${staffId}`);
       setStaff(prev => prev.filter(s => s._id !== staffId));

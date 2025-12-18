@@ -103,15 +103,19 @@ const InternalMarksManager = () => {
   const [loadingMarks, setLoadingMarks] = useState(false);
   const [studentViewRow, setStudentViewRow] = useState(null);
   const [teacherPapers, setTeacherPapers] = useState([]);
+  const [refreshingMarks, setRefreshingMarks] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // Fetch papers based on user role
   // NOTE: For Internal Marks Manager, even HODs only see papers they personally teach
   // For department-wide view, HODs should use the HOD Dashboard
   useEffect(() => {
     const fetchPapers = async () => {
-      console.log("=== FETCHING PAPERS DEBUG ===");
-      console.log("User object:", user);
-      console.log("User ID:", user._id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("=== FETCHING PAPERS DEBUG ===");
+        console.log("User object:", user);
+        console.log("User ID:", user._id);
+      }
       console.log("User role:", user.role);
       console.log("User userType:", user.userType);
       console.log("User department:", user.department);
@@ -162,9 +166,11 @@ const InternalMarksManager = () => {
 
   // Update selectedPaper when selectedPaperId changes
   useEffect(() => {
-    console.log("=== PAPER SELECTION DEBUG ===");
-    console.log("Selected Paper ID:", selectedPaperId);
-    console.log("Available Papers:", teacherPapers);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("=== PAPER SELECTION DEBUG ===");
+      console.log("Selected Paper ID:", selectedPaperId);
+      console.log("Available Papers:", teacherPapers);
+    }
     
     if (!selectedPaperId) {
       console.log("No paper selected, clearing data");
@@ -186,9 +192,11 @@ const InternalMarksManager = () => {
   const isStaffOrTeacher = user.userType === "staff" || user.role === "teacher" || user.role === "HOD";
   
   const fetchMarksData = useCallback(async () => {
-    console.log("=== INTERNAL MARKS DEBUG ===");
-    console.log("Selected Paper:", selectedPaper);
-    console.log("Selected Section:", selectedSection);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("=== INTERNAL MARKS DEBUG ===");
+      console.log("Selected Paper:", selectedPaper);
+      console.log("Selected Section:", selectedSection);
+    }
     console.log("User:", user);
     console.log("Is Staff/Teacher:", isStaffOrTeacher);
     
@@ -245,11 +253,11 @@ const InternalMarksManager = () => {
       const sortedStudents = sortByRollNumber(allStudents);
       console.log(`After sorting: ${sortedStudents.length} students`);
       
-      // Get existing marks
+      // Get existing marks with cache busting to ensure fresh data
       console.log(`Fetching existing marks for paper: ${selectedPaper._id}`);
-      const marksResponse = await axios.get(`/internal/paper/${selectedPaper._id}/manual`);
+      const marksResponse = await axios.get(`/internal/paper/${selectedPaper._id}/manual?t=${Date.now()}`);
       const existingMarks = marksResponse.data || [];
-      console.log(`Found ${existingMarks.length} existing marks`);
+      console.log(`Found ${existingMarks.length} existing marks`, existingMarks);
       
       // Get assignment and quiz marks for this paper
       console.log(`Fetching assignment and quiz marks for paper: ${selectedPaper._id}`);
@@ -284,19 +292,32 @@ const InternalMarksManager = () => {
         const combinedAssignmentQuizMarks = Math.round((studentAssignmentMarks + studentQuizMarks) / 2);
         
         if (existingMark) {
-          // Update existing mark's subject to use full name
-          existingMark.subject = getFullSubjectName(selectedPaper.paper);
+          // Ensure existing mark has proper structure and all required properties
+          const normalizedMark = {
+            _id: existingMark._id || student._id,
+            rollNo: existingMark.rollNo || student.rollNo,
+            name: existingMark.name || student.name,
+            subject: getFullSubjectName(selectedPaper.paper),
+            midMarks: existingMark.midMarks || 0,
+            lab: existingMark.lab || 0,
+            assignmentQuiz: existingMark.assignmentQuiz || 0,
+            assignmentQuizAuto: existingMark.assignmentQuizAuto || false,
+            assignmentQuizManual: existingMark.assignmentQuizManual || false,
+            attendance: existingMark.attendance || 0,
+            total: 0 // Will be recalculated below
+          };
           
           // Only update assignment/quiz marks if not manually overridden
-          if (!existingMark.assignmentQuizManual && combinedAssignmentQuizMarks > 0) {
-            existingMark.assignmentQuiz = combinedAssignmentQuizMarks;
-            existingMark.assignmentQuizAuto = true;
+          if (!normalizedMark.assignmentQuizManual && combinedAssignmentQuizMarks > 0) {
+            normalizedMark.assignmentQuiz = combinedAssignmentQuizMarks;
+            normalizedMark.assignmentQuizAuto = true;
           }
           
           // Recalculate total
-          existingMark.total = (existingMark.midMarks || 0) + (existingMark.lab || 0) + 
-                              (existingMark.assignmentQuiz || 0) + (existingMark.attendance || 0);
-          return existingMark;
+          normalizedMark.total = (normalizedMark.midMarks || 0) + (normalizedMark.lab || 0) + 
+                                (normalizedMark.assignmentQuiz || 0) + (normalizedMark.attendance || 0);
+          
+          return normalizedMark;
         } else {
           return {
             _id: student._id,
@@ -410,6 +431,11 @@ const InternalMarksManager = () => {
       toast.success("Marks saved successfully!");
       setRows(sortedRows); // Update state with sorted data
       setError(""); // Clear any previous errors
+      
+      // Refresh data after saving to ensure consistency
+      setTimeout(() => {
+        fetchMarksData();
+      }, 500);
     } catch (err) {
       console.error("Save error:", err);
       if (err.response?.data?.errors) {
@@ -568,31 +594,68 @@ const InternalMarksManager = () => {
     }
   };
 
-  // Student view: automatically load their own marks (NO SEARCH ALLOWED)
-  useEffect(() => {
+  // Function to fetch student marks with cache busting
+  const fetchStudentMarks = useCallback(async (forceRefresh = false) => {
     if (user.userType === "student" && selectedPaper && user.rollNo) {
-      // Automatically fetch ONLY the logged-in student's marks
-      axios.get(`/internal/paper/${selectedPaper._id}/manual`)
-        .then(res => {
-          const data = res.data || [];
-          const sortedData = sortByRollNumber(data);
-          // SECURITY: Only show marks for the logged-in student's roll number
-          const found = sortedData.find(row => row.rollNo === user.rollNo);
-          setStudentViewRow(found || null);
-        })
-        .catch(() => setStudentViewRow(null));
+      try {
+        if (forceRefresh) {
+          setRefreshingMarks(true);
+        }
+        
+        // Add cache busting parameter to force fresh data
+        const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
+        const response = await axios.get(`/internal/paper/${selectedPaper._id}/manual${cacheBuster}`);
+        const data = response.data || [];
+        const sortedData = sortByRollNumber(data);
+        // SECURITY: Only show marks for the logged-in student's roll number
+        const found = sortedData.find(row => row.rollNo === user.rollNo);
+        setStudentViewRow(found || null);
+        setLastUpdated(new Date());
+        
+        if (forceRefresh) {
+          toast.success('Marks refreshed successfully!');
+        }
+      } catch (error) {
+        console.error('Error fetching student marks:', error);
+        setStudentViewRow(null);
+        if (forceRefresh) {
+          toast.error('Failed to refresh marks');
+        }
+      } finally {
+        if (forceRefresh) {
+          setRefreshingMarks(false);
+        }
+      }
     } else if (user.userType === "student") {
       setStudentViewRow(null);
     }
-  }, [selectedPaper, user.userType, user.rollNo]);
+  }, [user.userType, selectedPaper, user.rollNo]);
+
+  // Student view: automatically load their own marks (NO SEARCH ALLOWED)
+  useEffect(() => {
+    fetchStudentMarks(false);
+  }, [fetchStudentMarks]);
+
+  // Auto-refresh for students every 30 seconds to get latest marks
+  useEffect(() => {
+    if (user.userType === "student" && selectedPaper) {
+      const interval = setInterval(() => {
+        fetchStudentMarks(false);
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [selectedPaper, user.userType, fetchStudentMarks]);
 
 
 
   if (loading) return <Loading />;
 
-  console.log('=== USER TYPE DEBUG ===');
-  console.log('user.userType:', user.userType);
-  console.log('user.role:', user.role);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('=== USER TYPE DEBUG ===');
+    console.log('user.userType:', user.userType);
+    console.log('user.role:', user.role);
+  }
   console.log('Full user object:', user);
 
   // Student view: display ONLY their own marks (SECURE)
@@ -624,11 +687,29 @@ const InternalMarksManager = () => {
                 <option key={p._id} value={p._id}>{getFullSubjectName(p.paper)}</option>
               ))}
             </select>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              (Showing marks for your roll number only)
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                (Showing marks for your roll number only)
+              </span>
+              {lastUpdated && (
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
+            {selectedPaperId && selectedPaperId !== 'all' && (
+              <button
+                onClick={() => fetchStudentMarks(true)}
+                disabled={refreshingMarks}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh to get latest marks"
+              >
+                <span className={refreshingMarks ? 'animate-spin' : ''}>🔄</span>
+                <span>{refreshingMarks ? 'Refreshing...' : 'Refresh Marks'}</span>
+              </button>
+            )}
             <button
               onClick={() => downloadStudentAllPapersPDF()}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
@@ -815,6 +896,18 @@ const InternalMarksManager = () => {
                 className="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
               >
                 <FaFileExcel /> Download Excel
+              </button>
+              <button 
+                onClick={() => {
+                  fetchMarksData();
+                  toast.success('Data refreshed!');
+                }}
+                disabled={loading || !selectedPaper._id} 
+                className="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+                title="Refresh to load latest data"
+              >
+                <span className={loading ? 'animate-spin' : ''}>🔄</span> 
+                {loading ? 'Refreshing...' : 'Refresh Data'}
               </button>
               <button 
                 onClick={downloadClassPDF} 

@@ -3,6 +3,7 @@ import UserContext from "../../Hooks/UserContext";
 import { FaCheck, FaTimes, FaEye } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Loading from "../Layouts/Loading";
+import axios from "../../config/api/axios";
 
 const StudentLeave = () => {
   const { user } = useContext(UserContext);
@@ -10,60 +11,23 @@ const StudentLeave = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Mock leave data since there's no backend endpoint yet
   useEffect(() => {
     const fetchLeaveRequests = async () => {
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock data for demonstration
-        const mockLeaveRequests = [
-          {
-            _id: "1",
-            studentName: "Alice Johnson",
-            rollNo: "CS001",
-            section: "A",
-            leaveType: "Medical",
-            startDate: "2024-01-15",
-            endDate: "2024-01-17",
-            reason: "Fever and flu symptoms. Doctor advised rest.",
-            status: "Pending",
-            submittedAt: new Date().toISOString(),
-            documents: ["medical_certificate.pdf"]
-          },
-          {
-            _id: "2",
-            studentName: "Bob Smith",
-            rollNo: "CS002",
-            section: "B",
-            leaveType: "Personal",
-            startDate: "2024-01-20",
-            endDate: "2024-01-22",
-            reason: "Family wedding ceremony in hometown.",
-            status: "Approved",
-            submittedAt: new Date().toISOString(),
-            documents: []
-          },
-          {
-            _id: "3",
-            studentName: "Carol Davis",
-            rollNo: "CS003",
-            section: "A",
-            leaveType: "Emergency",
-            startDate: "2024-01-18",
-            endDate: "2024-01-19",
-            reason: "Family emergency - grandfather hospitalized.",
-            status: "Rejected",
-            submittedAt: new Date().toISOString(),
-            documents: []
-          }
-        ];
-        
-        setLeaveRequests(mockLeaveRequests);
+        if (user.role === "HOD" && user.department) {
+          // Only HOD can see and approve student leave requests from their department
+          const response = await axios.get(`/leave/student/department/${encodeURIComponent(user.department)}`);
+          setLeaveRequests(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setError("Department information not found");
+          return;
+        }
       } catch (err) {
-        setError("Failed to fetch leave requests");
-        console.error(err);
+        const errorMessage = err.response?.data?.message || 
+                            err.message || 
+                            "Failed to fetch leave requests";
+        setError(errorMessage);
+        console.error("Error fetching student leave requests:", err);
       } finally {
         setLoading(false);
       }
@@ -71,12 +35,21 @@ const StudentLeave = () => {
 
     if (user && user.role === "HOD" && user.department) {
       fetchLeaveRequests();
+    } else if (user && user.role === "HOD") {
+      setError("Department information missing");
+      setLoading(false);
+    } else if (user) {
+      setLoading(false);
     }
   }, [user]);
 
   const handleApprove = async (leaveId) => {
     try {
-      // Mock API call
+      await axios.patch(`/leave/student/${leaveId}/status`, {
+        status: 'Approved',
+        reviewerId: user._id
+      });
+      
       setLeaveRequests(prev => 
         prev.map(leave => 
           leave._id === leaveId ? { ...leave, status: 'Approved' } : leave
@@ -84,13 +57,18 @@ const StudentLeave = () => {
       );
       toast.success('Leave request approved successfully');
     } catch (err) {
-      toast.error('Error approving leave request');
+      console.error('Error approving leave request:', err);
+      toast.error(err.response?.data?.message || 'Error approving leave request');
     }
   };
 
   const handleReject = async (leaveId) => {
     try {
-      // Mock API call
+      await axios.patch(`/leave/student/${leaveId}/status`, {
+        status: 'Rejected',
+        reviewerId: user._id
+      });
+      
       setLeaveRequests(prev => 
         prev.map(leave => 
           leave._id === leaveId ? { ...leave, status: 'Rejected' } : leave
@@ -98,7 +76,8 @@ const StudentLeave = () => {
       );
       toast.success('Leave request rejected');
     } catch (err) {
-      toast.error('Error rejecting leave request');
+      console.error('Error rejecting leave request:', err);
+      toast.error(err.response?.data?.message || 'Error rejecting leave request');
     }
   };
 
@@ -134,7 +113,7 @@ const StudentLeave = () => {
     return (
       <div className="text-center p-8">
         <h2 className="text-2xl font-bold text-red-600">Access Denied</h2>
-        <p className="text-gray-600">Only HOD can access this page.</p>
+        <p className="text-gray-600">Only HOD can access this page. Student leaves must be approved by the respective department HOD.</p>
       </div>
     );
   }
@@ -176,24 +155,27 @@ const StudentLeave = () => {
             <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
               {leaveRequests.map((leave, index) => (
                 <tr key={leave._id || index} className="hover:bg-gray-50 dark:hover:bg-slate-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.studentName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.rollNo}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.studentName || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{leave.rollNo || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
-                      {leave.section}
+                      {leave.section || 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLeaveTypeColor(leave.leaveType)}`}>
-                      {leave.leaveType}
+                      {leave.leaveType || 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                    {leave.startDate && leave.endDate ? 
+                      `${new Date(leave.startDate).toLocaleDateString()} - ${new Date(leave.endDate).toLocaleDateString()}` : 
+                      'N/A'
+                    }
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs">
-                    <div className="truncate" title={leave.reason}>
-                      {leave.reason.length > 30 ? `${leave.reason.substring(0, 30)}...` : leave.reason}
+                    <div className="truncate" title={leave.reason || ''}>
+                      {leave.reason && leave.reason.length > 30 ? `${leave.reason.substring(0, 30)}...` : (leave.reason || 'No reason provided')}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -241,12 +223,7 @@ const StudentLeave = () => {
           </div>
         )}
 
-        <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-          <p className="text-yellow-800 dark:text-yellow-200 text-sm">
-            <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
-            This is a demo with sample data. The leave management system will be fully integrated with the backend in the next update.
-          </p>
-        </div>
+
       </div>
     </main>
   );

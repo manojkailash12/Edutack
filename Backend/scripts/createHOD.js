@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const Staff = require('../models/Staff');
 const bcrypt = require('bcrypt');
 
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/Edutack';
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority';
 
 async function createHOD() {
   await mongoose.connect(MONGO_URI);

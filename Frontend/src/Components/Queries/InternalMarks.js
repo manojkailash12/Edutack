@@ -21,25 +21,45 @@ const InternalMarks = () => {
     total: 0
   });
 
-  // Fetch marks for selected paper
-  const fetchMarks = async () => {
+  // Fetch marks for selected paper with cache busting
+  const fetchMarks = async (forceRefresh = false) => {
     if (!selectedPaper) return;
     
     setLoading(true);
     try {
-      const response = await axios.get(`/internal/paper/${selectedPaper}/manual`);
+      // Add cache busting parameter to force fresh data
+      const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
+      const response = await axios.get(`/internal/paper/${selectedPaper}/manual${cacheBuster}`);
       setMarks(response.data || []);
+      
+      if (forceRefresh) {
+        toast.success('Marks refreshed successfully!');
+      }
     } catch (error) {
       console.error('Error fetching marks:', error);
       setMarks([]);
+      if (forceRefresh) {
+        toast.error('Failed to refresh marks');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMarks();
+    fetchMarks(false);
   }, [selectedPaper]);
+
+  // Auto-refresh for students every 30 seconds to get latest marks
+  useEffect(() => {
+    if (user.userType === 'student' && selectedPaper && selectedPaper !== 'all') {
+      const interval = setInterval(() => {
+        fetchMarks(false);
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [selectedPaper, user.userType]);
 
   // Calculate total marks
   const calculateTotal = (midMarks, lab, assignmentQuiz, attendance) => {
@@ -223,13 +243,25 @@ const InternalMarks = () => {
           
           <div className="flex gap-2">
             {user.userType === 'student' && (
-              <button
-                onClick={downloadStudentPDF}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-              >
-                <FaDownload />
-                {selectedPaper === 'all' ? 'All Papers PDF' : 'My Report PDF'}
-              </button>
+              <>
+                {selectedPaper && selectedPaper !== 'all' && (
+                  <button
+                    onClick={() => fetchMarks(true)}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                    title="Refresh to get latest marks"
+                  >
+                    <span>🔄</span>
+                    <span>Refresh</span>
+                  </button>
+                )}
+                <button
+                  onClick={downloadStudentPDF}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+                >
+                  <FaDownload />
+                  {selectedPaper === 'all' ? 'All Papers PDF' : 'My Report PDF'}
+                </button>
+              </>
             )}
             
             {user.userType === 'staff' && selectedPaper && selectedPaper !== 'all' && (

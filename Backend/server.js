@@ -4,15 +4,23 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
-// Create uploads directory if it doesn't exist
+// Create uploads and assets directories if they don't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 const profilePhotosDir = path.join(uploadsDir, 'profile-photos');
+const certificatesDir = path.join(uploadsDir, 'certificates');
+const assetsDir = path.join(__dirname, 'assets');
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 if (!fs.existsSync(profilePhotosDir)) {
   fs.mkdirSync(profilePhotosDir);
+}
+if (!fs.existsSync(certificatesDir)) {
+  fs.mkdirSync(certificatesDir);
+}
+if (!fs.existsSync(assetsDir)) {
+  fs.mkdirSync(assetsDir);
 }
 
 const app = express();
@@ -124,6 +132,21 @@ app.use("/users", require("./routes/userRoutes"));
 app.use("/assignments", require("./routes/assignmentRoutes"));
 app.use("/quizzes", require("./routes/quizRoutes"));
 app.use("/semester", require("./routes/semesterRoutes"));
+app.use("/feedback", require("./routes/feedbackRoutes"));
+app.use("/leave", require("./routes/leaveRoutes"));
+app.use("/staff-attendance", require("./routes/staffAttendanceRoutes"));
+app.use("/certificates", require("./routes/certificateRoutes"));
+app.use("/payslips", require("./routes/payslipRoutes"));
+app.use("/academic-calendar", require("./routes/academicCalendarRoutes"));
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Edutack API is running',
+    timestamp: new Date().toISOString()
+  });
+});
 
 app.all("*", (req, res) => {
   res.status(404);
@@ -136,10 +159,13 @@ app.all("*", (req, res) => {
 
 app.use(errorHandler);
 
-mongoose.connection.once("open", () => {
-  console.log("Connected to MongoDB");
-  app.listen(PORT, () => console.log(`server running on PORT ${PORT}`));
-});
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  mongoose.connection.once("open", () => {
+    console.log("Connected to MongoDB");
+    app.listen(PORT, () => console.log(`server running on PORT ${PORT}`));
+  });
+}
 
 mongoose.connection.on("error", (err) => {
   console.log(err);
@@ -152,3 +178,6 @@ mongoose.connection.on("error", (err) => {
 mongoose.connection.on("uncaughtException", function (err) {
   console.log(err);
 });
+
+// Export app for serverless deployment
+module.exports = app;

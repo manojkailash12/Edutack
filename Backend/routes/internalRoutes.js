@@ -27,6 +27,9 @@ router.post("/paper/:paperId/manual", internalController.saveManualMarks);
 router.get("/paper/:paperId/manual", internalController.getManualMarks);
 router.get("/paper/:paperId/manual/download", internalController.downloadManualMarksExcel);
 
+// Admin route - Get all internal marks
+router.get("/all", internalController.getAllInternalMarks);
+
 router
   .route("/:paper")
   .get(internalController.getInternal)

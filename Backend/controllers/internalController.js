@@ -256,11 +256,33 @@ const saveStudentInternalMarks = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Get paper information to extract required fields
+    const paper = await Paper.findById(paperId);
+    if (!paper) {
+      return res.status(404).json({ message: "Paper not found" });
+    }
+
+    // Map semester from Paper format (I, II, III) to Internal format (Semester 1, Semester 2)
+    const semesterMapping = {
+      'I': 'Semester 1',
+      'II': 'Semester 2', 
+      'III': 'Semester 3',
+      'IV': 'Semester 4',
+      'V': 'Semester 5',
+      'VI': 'Semester 6',
+      'VII': 'Semester 7',
+      'VIII': 'Semester 8'
+    };
+
+    const mappedSemester = semesterMapping[paper.semester] || "Semester 1";
+
     let internal = await Internal.findOne({ paper: paperId });
     
     if (!internal) {
       internal = new Internal({
         paper: paperId,
+        academicYear: paper.year || "2024-2025",
+        semester: mappedSemester,
         marks: []
       });
     }
@@ -426,10 +448,33 @@ const addInternal = asyncHandler(async (req, res) => {
     return res.status(409).json({ message: "Internal record already exists" });
   }
 
+  // Get paper information to extract required fields
+  const paperDoc = await Paper.findById(paper);
+  if (!paperDoc) {
+    return res.status(404).json({ message: "Paper not found" });
+  }
+
+  // Map semester from Paper format (I, II, III) to Internal format (Semester 1, Semester 2)
+  const semesterMapping = {
+    'I': 'Semester 1',
+    'II': 'Semester 2', 
+    'III': 'Semester 3',
+    'IV': 'Semester 4',
+    'V': 'Semester 5',
+    'VI': 'Semester 6',
+    'VII': 'Semester 7',
+    'VIII': 'Semester 8'
+  };
+
+  const mappedSemester = semesterMapping[paperDoc.semester] || "Semester 1";
+
   const InternalObj = {
     paper,
+    academicYear: paperDoc.year || "2024-2025",
+    semester: mappedSemester,
     marks,
   };
+  
   // Create and Store New Internal Record
   const record = await Internal.create(InternalObj);
   if (record) {
@@ -544,11 +589,42 @@ const saveManualMarks = asyncHandler(async (req, res) => {
     });
   }
   
+  // Get paper information to extract required fields
+  const paper = await Paper.findById(paperId);
+  if (!paper) {
+    return res.status(404).json({ message: "Paper not found" });
+  }
+
+  // Map semester from Paper format (I, II, III) to Internal format (Semester 1, Semester 2)
+  const semesterMapping = {
+    'I': 'Semester 1',
+    'II': 'Semester 2', 
+    'III': 'Semester 3',
+    'IV': 'Semester 4',
+    'V': 'Semester 5',
+    'VI': 'Semester 6',
+    'VII': 'Semester 7',
+    'VIII': 'Semester 8'
+  };
+
+  const mappedSemester = semesterMapping[paper.semester] || "Semester 1";
+
   let internal = await Internal.findOne({ paper: paperId });
   if (!internal) {
-    internal = new Internal({ paper: paperId, marks: [] });
+    // Create new internal document with required fields
+    internal = new Internal({ 
+      paper: paperId, 
+      academicYear: paper.year || "2024-2025",
+      semester: mappedSemester,
+      marks: [] 
+    });
   }
+  
+  // Update marks and ensure required fields are set
   internal.marks = marks;
+  internal.academicYear = paper.year || internal.academicYear || "2024-2025";
+  internal.semester = mappedSemester;
+  
   await internal.save();
   res.json({ message: "Manual marks saved successfully" });
 });
@@ -1226,6 +1302,48 @@ const testPDFGeneration = asyncHandler(async (req, res) => {
   }
 });
 
+// Get all internal marks (Admin function)
+const getAllInternalMarks = asyncHandler(async (req, res) => {
+  try {
+    const { academicYear, semester } = req.query;
+
+    // Use the correct academic year format that matches what's stored in papers
+    const defaultAcademicYear = "2025-2026"; // Match the format used in papers
+    const queryAcademicYear = academicYear || defaultAcademicYear;
+    const querySemester = semester || "Semester 1";
+
+    console.log('Admin querying internal marks with:');
+    console.log('- academicYear:', queryAcademicYear);
+    console.log('- semester:', querySemester);
+
+    const internalMarks = await Internal.find({
+      academicYear: queryAcademicYear,
+      semester: querySemester
+    }).populate('paper', 'paper code department year semester sections');
+
+    console.log(`Found ${internalMarks.length} internal marks records`);
+
+    // If no records found with exact match, try to find any records and log what's available
+    if (internalMarks.length === 0) {
+      const allInternals = await Internal.find({}).limit(5);
+      console.log('Available internal records (sample):');
+      allInternals.forEach(internal => {
+        console.log(`- academicYear: "${internal.academicYear}", semester: "${internal.semester}"`);
+      });
+    }
+
+    res.status(200).json({
+      message: 'All internal marks retrieved successfully',
+      data: internalMarks,
+      query: { academicYear: queryAcademicYear, semester: querySemester }
+    });
+
+  } catch (error) {
+    console.error('Error retrieving all internal marks:', error);
+    res.status(500).json({ message: 'Error retrieving all internal marks', error: error.message });
+  }
+});
+
 module.exports = {
   getInternal,
   getInternalStudent,
@@ -1244,4 +1362,5 @@ module.exports = {
   downloadSamplePDF,
   downloadSampleStudentPDF,
   testPDFGeneration,
+  getAllInternalMarks,
 };

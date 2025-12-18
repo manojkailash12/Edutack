@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const RegisterForm = () => {
@@ -23,15 +23,30 @@ const RegisterForm = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [departments, setDepartments] = useState([]);
 
-  const departments = [
-    'Computer Science and Engineering (CSE)',
-    'Electronics and Communication Engineering (ECE)',
-    'Electrical and Electronics Engineering (EEE)',
-    'Mechanical Engineering (ME)',
-    'Civil Engineering (CE)',
-    'Information Technology (IT)'
-  ];
+  // Fetch departments on component mount
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get('http://localhost:3500/staff/departments');
+        setDepartments(response.data.departments || []);
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        // Fallback to default departments if API fails
+        setDepartments([
+          'Computer Science and Engineering (CSE)',
+          'Electronics and Communication Engineering (ECE)',
+          'Electrical and Electronics Engineering (EEE)',
+          'Mechanical Engineering (ME)',
+          'Civil Engineering (CE)',
+          'Information Technology (IT)'
+        ]);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   const sections = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'SIGMA', 'OMEGA', 'ZETA', 'EPSILON'];
   const years = ['2024-2025', '2025-2026', '2026-2027', '2027-2028'];

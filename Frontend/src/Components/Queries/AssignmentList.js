@@ -136,17 +136,17 @@ const AssignmentList = () => {
   }, [getAssignments, selectedPaper]);
 
   const deleteAssignment = useCallback(async (assignmentId) => {
-    if (!window.confirm('Are you sure you want to delete this assignment?')) return;
-    
     try {
       const response = await axios.delete(`/assignments/${assignmentId}`);
       toast.success(response.data.message);
       // Optimistically update UI
       setAssignments(prev => prev.filter(assignment => assignment._id !== assignmentId));
+      // Refresh assignments to ensure consistency
+      getAssignments(true);
     } catch (err) {
       toast.error('Error deleting assignment');
     }
-  }, []);
+  }, [getAssignments]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleString();

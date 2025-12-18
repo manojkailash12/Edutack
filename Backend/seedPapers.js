@@ -4,7 +4,7 @@ const Staff = require('./models/Staff');
 const Student = require('./models/Student');
 const Paper = require('./models/Paper');
 
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/'; // Atlas connection
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority'; // Atlas connection
 const department = process.argv[2] || 'Computer Science and Engineering (CSE)';
 const semester = process.argv[3] || 'VII'; // Default to VII, can be VI, VII, or VIII
 const sections = ['ALPHA','BETA','GAMMA','DELTA','SIGMA','OMEGA','ZETA','EPSILON'];

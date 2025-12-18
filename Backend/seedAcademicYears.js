@@ -4,7 +4,7 @@ const Staff = require('./models/Staff');
 const Student = require('./models/Student');
 const Paper = require('./models/Paper');
 
-const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/';
+const MONGO_URI = 'mongodb+srv://Manoj:Manoj@cluster0.wpbk05r.mongodb.net/test?retryWrites=true&w=majority';
 
 const department = 'Computer Science and Engineering (CSE)';
 const sections = ['ALPHA', 'BETA', 'GAMMA', 'DELTA', 'SIGMA', 'OMEGA', 'ZETA', 'EPSILON'];

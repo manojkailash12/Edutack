@@ -879,8 +879,6 @@ const HODDashboard = () => {
   };
 
   const deleteAssignment = async (assignmentId) => {
-    if (!window.confirm('Are you sure you want to delete this assignment?')) return;
-    
     try {
       await axios.delete(`/assignments/${assignmentId}`);
       setAssignments(prev => prev.filter(a => a._id !== assignmentId));
@@ -891,8 +889,6 @@ const HODDashboard = () => {
   };
 
   const deleteQuiz = async (quizId) => {
-    if (!window.confirm('Are you sure you want to delete this quiz?')) return;
-    
     try {
       await axios.delete(`/quizzes/${quizId}`);
       setQuizzes(prev => prev.filter(q => q._id !== quizId));

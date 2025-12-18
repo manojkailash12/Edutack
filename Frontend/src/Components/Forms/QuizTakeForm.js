@@ -71,8 +71,7 @@ const QuizTakeForm = () => {
     
     const unanswered = answers.filter(ans => ans === null).length;
     if (unanswered > 0 && !autoSubmit) {
-      const confirmSubmit = window.confirm(`You have ${unanswered} unanswered questions. Are you sure you want to submit?`);
-      if (!confirmSubmit) return;
+      toast.warning(`You have ${unanswered} unanswered questions. Submitting quiz...`);
     }
     
     setSubmitting(true);
