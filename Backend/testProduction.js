@@ -50,7 +50,7 @@ async function runProductionTests() {
     // Send test email
     const testEmail = {
       from: process.env.EMAIL_USER,
-      to: 'manojkailash12@gmail.com', // Replace with your email
+      to: 'manojkailash1@gmail.com', // Replace with your email
       subject: 'EDUTRACK Production Test - Email Service',
       html: `
         <h2>✅ Email Service Working!</h2>
@@ -75,7 +75,7 @@ async function runProductionTests() {
   // Test 3: OTP Service
   console.log('\n🔐 Testing OTP Service...');
   try {
-    const otpResult = await otpService.sendOTP('manojkailash12@gmail.com', 'test', 
+    const otpResult = await otpService.sendOTP('manojkailash1@gmail.com', 'test', 
       '<h3>🧪 OTP Service Test</h3><p>This OTP confirms the OTP service is working in production.</p>');
     
     console.log('✅ OTP sent successfully');
