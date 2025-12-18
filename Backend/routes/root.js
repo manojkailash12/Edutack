@@ -3,7 +3,27 @@ const router = express.Router();
 const path = require("path");
 
 router.get("^/$|/index(.html)?", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "views", "index.html"));
+  res.json({
+    message: "🎓 EDUTRACK API Server",
+    status: "✅ Running Successfully",
+    version: "1.0.0",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      api_info: "/api",
+      health_check: "/health",
+      authentication: "/auth",
+      papers: "/paper",
+      assignments: "/assignments",
+      quizzes: "/quizzes",
+      attendance: "/attendance",
+      staff: "/staff",
+      students: "/student",
+      certificates: "/certificates",
+      payslips: "/payslips"
+    },
+    note: "This is the backend API. Frontend is deployed separately."
+  });
 });
 
 // API info endpoint
