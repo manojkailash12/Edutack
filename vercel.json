@@ -1,14 +1,9 @@
 {
   "version": 2,
   "name": "edutrack",
+  "buildCommand": "cd Frontend && npm ci && npm run build",
+  "outputDirectory": "Frontend/build",
   "builds": [
-    {
-      "src": "Frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    },
     {
       "src": "api/index.js",
       "use": "@vercel/node"
@@ -107,10 +102,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/Frontend/build/index.html"
+      "dest": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
