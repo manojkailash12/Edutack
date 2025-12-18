@@ -12,10 +12,10 @@ const transporter = nodemailer.createTransport({
   maxMessages: 100,
   rateDelta: 20000,
   rateLimit: 5,
-  // Timeout settings
-  connectionTimeout: 60000, // 60 seconds
-  greetingTimeout: 30000,   // 30 seconds
-  socketTimeout: 60000,     // 60 seconds
+  // Timeout settings - Extended for production reliability
+  connectionTimeout: 120000, // 2 minutes
+  greetingTimeout: 60000,    // 1 minute
+  socketTimeout: 120000,     // 2 minutes
   // Security settings
   secure: true,
   requireTLS: true
