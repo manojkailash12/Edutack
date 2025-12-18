@@ -104,13 +104,14 @@
     },
     {
       "src": "/static/(.*)",
+      "dest": "/Frontend/static/$1",
       "headers": {
         "cache-control": "public, max-age=31536000, immutable"
       }
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/Frontend/index.html"
     }
   ]
 }
