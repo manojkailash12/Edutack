@@ -88,23 +88,31 @@ class CertificateService {
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const filename = `certificate_${certificate.student.rollNo}_${certificate.academicYear}_${certificate.semester}.pdf`;
       
-      // Use /tmp directory for serverless environments (Render)
-      const uploadsDir = process.env.NODE_ENV === 'production' 
-        ? '/tmp/certificates' 
-        : path.join(__dirname, '../uploads/certificates');
-      
+      // Production-ready directory handling
+      const getCertificatesDir = () => {
+        if (process.env.NODE_ENV === 'production') {
+          const tmpDir = '/tmp/certificates';
+          if (!fs.existsSync(tmpDir)) {
+            fs.mkdirSync(tmpDir, { recursive: true });
+          }
+          return tmpDir;
+        } else {
+          const uploadsDir = path.join(__dirname, '../uploads/certificates');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          return uploadsDir;
+        }
+      };
+
+      const uploadsDir = getCertificatesDir();
       const filepath = path.join(uploadsDir, filename);
 
-      // Ensure directory exists
-      const dir = path.dirname(filepath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      console.log('=== PDF GENERATION DEBUG ===');
+      console.log('=== BULLETPROOF PDF GENERATION ===');
       console.log('Environment:', process.env.NODE_ENV);
       console.log('Upload directory:', uploadsDir);
       console.log('File path:', filepath);
+      console.log('Directory exists:', fs.existsSync(uploadsDir));
 
       const stream = fs.createWriteStream(filepath);
       doc.pipe(stream);

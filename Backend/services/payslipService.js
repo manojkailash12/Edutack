@@ -3,11 +3,24 @@ const fs = require('fs');
 const path = require('path');
 const nodemailer = require('nodemailer');
 
-// Create payslips directory if it doesn't exist
-const payslipsDir = path.join(__dirname, '../uploads/payslips');
-if (!fs.existsSync(payslipsDir)) {
-  fs.mkdirSync(payslipsDir, { recursive: true });
-}
+// Create payslips directory - Production compatible
+const getPayslipsDir = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // Use /tmp for serverless environments
+    const tmpDir = '/tmp/payslips';
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    return tmpDir;
+  } else {
+    // Use uploads for development
+    const uploadsDir = path.join(__dirname, '../uploads/payslips');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    return uploadsDir;
+  }
+};
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
@@ -34,7 +47,13 @@ const generatePayslipPDF = async (payslipData) => {
       
       // Generate filename
       const filename = `payslip_${payslipData.employeeId}_${payslipData.month}_${payslipData.year}.pdf`;
+      const payslipsDir = getPayslipsDir();
       const filepath = path.join(payslipsDir, filename);
+      
+      console.log('=== PAYSLIP PDF GENERATION ===');
+      console.log('Environment:', process.env.NODE_ENV);
+      console.log('Payslips directory:', payslipsDir);
+      console.log('File path:', filepath);
       
       // Pipe PDF to file
       doc.pipe(fs.createWriteStream(filepath));

@@ -138,6 +138,7 @@ app.use("/certificates", require("./routes/certificateRoutes"));
 app.use("/payslips", require("./routes/payslipRoutes"));
 app.use("/academic-calendar", require("./routes/academicCalendarRoutes"));
 app.use("/health", require("./routes/healthRoutes"));
+app.use("/otp", require("./routes/otpRoutes"));
 
 // Health check endpoint
 app.get("/health", (req, res) => {
