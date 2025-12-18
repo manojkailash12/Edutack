@@ -4,15 +4,15 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
-// Create uploads and assets directories in /tmp for Netlify Functions
-const uploadsDir = path.join('/tmp', 'uploads');
+// Create uploads and assets directories
+const uploadsDir = path.join(__dirname, 'uploads');
 const profilePhotosDir = path.join(uploadsDir, 'profile-photos');
 const certificatesDir = path.join(uploadsDir, 'certificates');
 const notesDir = path.join(uploadsDir, 'notes');
 const assignmentsDir = path.join(uploadsDir, 'assignments');
 const payslipsDir = path.join(uploadsDir, 'payslips');
 const reportsDir = path.join(uploadsDir, 'reports');
-const assetsDir = path.join('/tmp', 'assets');
+const assetsDir = path.join(__dirname, 'assets');
 
 // Create all necessary directories
 const directories = [uploadsDir, profilePhotosDir, certificatesDir, notesDir, assignmentsDir, payslipsDir, reportsDir, assetsDir];
@@ -43,8 +43,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 
-// Serve static files from uploads directory in /tmp
-app.use('/uploads', express.static(path.join('/tmp', 'uploads')));
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static files from public directory with proper MIME types
 app.use("/", express.static("public", {
@@ -70,7 +70,7 @@ app.use("/", express.static("public", {
 // Serve assignment files with proper MIME types (only for files with extensions)
 app.get('/assignments/files/:filename', (req, res) => {
   const filename = req.params.filename;
-  const filePath = path.join('/tmp/uploads/assignments', filename);
+  const filePath = path.join(__dirname, 'uploads/assignments', filename);
   
   console.log(`Serving assignment file: ${filename} from ${filePath}`);
   
@@ -158,13 +158,11 @@ app.all("*", (req, res) => {
 
 app.use(errorHandler);
 
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-  mongoose.connection.once("open", () => {
-    console.log("Connected to MongoDB");
-    app.listen(PORT, () => console.log(`server running on PORT ${PORT}`));
-  });
-}
+// Start server
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+  app.listen(PORT, () => console.log(`server running on PORT ${PORT}`));
+});
 
 mongoose.connection.on("error", (err) => {
   console.log(err);
@@ -178,5 +176,4 @@ mongoose.connection.on("uncaughtException", function (err) {
   console.log(err);
 });
 
-// Export app for serverless deployment
-module.exports = app;
+

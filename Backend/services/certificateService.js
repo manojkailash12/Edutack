@@ -87,7 +87,7 @@ class CertificateService {
 
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
       const filename = `certificate_${certificate.student.rollNo}_${certificate.academicYear}_${certificate.semester}.pdf`;
-      const filepath = path.join('/tmp/uploads/certificates', filename);
+      const filepath = path.join(__dirname, '../uploads/certificates', filename);
 
       // Ensure directory exists
       const dir = path.dirname(filepath);
@@ -211,9 +211,9 @@ class CertificateService {
           console.log('Legacy photo path:', normalizedPhoto);
           
           if (normalizedPhoto.startsWith('uploads/')) {
-            photoPath = path.join('/tmp', normalizedPhoto);
+            photoPath = path.join(__dirname, '..', normalizedPhoto);
           } else {
-            photoPath = path.join('/tmp/uploads/profile-photos', normalizedPhoto);
+            photoPath = path.join(__dirname, '../uploads/profile-photos', normalizedPhoto);
           }
           
           hasValidPhoto = fs.existsSync(photoPath);

@@ -7,7 +7,7 @@ const path = require('path');
 // Set up multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join('/tmp/uploads/assignments'));
+    cb(null, path.join(__dirname, '../uploads/assignments'));
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
@@ -32,7 +32,7 @@ const upload = multer({
 
 // Create assignments directory if it doesn't exist
 const fs = require('fs');
-const assignmentDir = path.join('/tmp/uploads/assignments');
+const assignmentDir = path.join(__dirname, '../uploads/assignments');
 if (!fs.existsSync(assignmentDir)) {
   fs.mkdirSync(assignmentDir, { recursive: true });
 }

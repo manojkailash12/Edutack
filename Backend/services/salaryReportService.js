@@ -17,7 +17,7 @@ const generateSalaryReportPDF = async (reportData) => {
       const doc = new PDFDocument({ margin: 50 });
       
       // Create reports directory if it doesn't exist
-      const reportsDir = path.join('/tmp/uploads/reports');
+      const reportsDir = path.join(__dirname, '../uploads/reports');
       if (!fs.existsSync(reportsDir)) {
         fs.mkdirSync(reportsDir, { recursive: true });
       }

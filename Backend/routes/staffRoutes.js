@@ -6,7 +6,7 @@ const path = require("path");
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, '/tmp/uploads/profile-photos/');
+    cb(null, 'uploads/profile-photos/');
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

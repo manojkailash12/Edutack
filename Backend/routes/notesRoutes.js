@@ -7,7 +7,7 @@ const path = require('path');
 // Set up multer for file uploads (no size limit, only PDF/DOCX)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join('/tmp/uploads/notes'));
+    cb(null, path.join(__dirname, '../uploads/notes'));
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
@@ -26,7 +26,7 @@ const upload = multer({
 
 // Create uploads directory if it doesn't exist
 const fs = require('fs');
-const uploadDir = path.join('/tmp/uploads/notes');
+const uploadDir = path.join(__dirname, '../uploads/notes');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
