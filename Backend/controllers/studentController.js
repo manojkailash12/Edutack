@@ -365,9 +365,16 @@ const updateProfilePhoto = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    // Update profile photo URL (normalize path for URLs)
-    student.profilePhoto = req.file.path.replace(/\\/g, '/');
+    // Convert image to base64 for serverless storage
+    const fs = require('fs');
+    const imageBuffer = fs.readFileSync(req.file.path);
+    const base64Image = `data:${req.file.mimetype};base64,${imageBuffer.toString('base64')}`;
+    
+    student.profilePhoto = base64Image;
     const updatedStudent = await student.save();
+    
+    // Clean up temporary file
+    fs.unlinkSync(req.file.path);
 
     res.json({
       message: "Profile photo updated successfully",

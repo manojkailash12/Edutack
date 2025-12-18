@@ -8,20 +8,19 @@ const fs = require("fs");
 const uploadsDir = path.join('/tmp', 'uploads');
 const profilePhotosDir = path.join(uploadsDir, 'profile-photos');
 const certificatesDir = path.join(uploadsDir, 'certificates');
+const notesDir = path.join(uploadsDir, 'notes');
+const assignmentsDir = path.join(uploadsDir, 'assignments');
+const payslipsDir = path.join(uploadsDir, 'payslips');
+const reportsDir = path.join(uploadsDir, 'reports');
 const assetsDir = path.join('/tmp', 'assets');
 
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-if (!fs.existsSync(profilePhotosDir)) {
-  fs.mkdirSync(profilePhotosDir, { recursive: true });
-}
-if (!fs.existsSync(certificatesDir)) {
-  fs.mkdirSync(certificatesDir, { recursive: true });
-}
-if (!fs.existsSync(assetsDir)) {
-  fs.mkdirSync(assetsDir, { recursive: true });
-}
+// Create all necessary directories
+const directories = [uploadsDir, profilePhotosDir, certificatesDir, notesDir, assignmentsDir, payslipsDir, reportsDir, assetsDir];
+directories.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 const app = express();
 const { logger, logEvents } = require("./middleware/logger");
@@ -71,7 +70,7 @@ app.use("/", express.static("public", {
 // Serve assignment files with proper MIME types (only for files with extensions)
 app.get('/assignments/files/:filename', (req, res) => {
   const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'public/assignments', filename);
+  const filePath = path.join('/tmp/uploads/assignments', filename);
   
   console.log(`Serving assignment file: ${filename} from ${filePath}`);
   

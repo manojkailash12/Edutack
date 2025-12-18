@@ -197,42 +197,52 @@ class CertificateService {
       console.log('Student name:', certificate.student.name);
       console.log('Student profilePhoto from DB:', certificate.student.profilePhoto);
       
+      let hasValidPhoto = false;
       if (certificate.student.profilePhoto && certificate.student.profilePhoto.trim() !== '') {
-        // Normalize path separators
-        const normalizedPhoto = certificate.student.profilePhoto.replace(/\\/g, '/');
-        console.log('Normalized photo path:', normalizedPhoto);
+        console.log('Student has profile photo data');
         
-        if (normalizedPhoto.startsWith('uploads/')) {
-          // Path already includes uploads/ prefix
-          photoPath = path.join('/tmp', normalizedPhoto);
+        // Check if it's base64 data
+        if (certificate.student.profilePhoto.startsWith('data:image/')) {
+          console.log('Profile photo is base64 data');
+          hasValidPhoto = true;
         } else {
-          // Just filename, add full path
-          photoPath = path.join('/tmp/uploads/profile-photos', normalizedPhoto);
-        }
-        
-        console.log('Constructed photo path:', photoPath);
-        console.log('Photo file exists:', fs.existsSync(photoPath));
-        
-        if (fs.existsSync(photoPath)) {
-          // Check file details
-          const stats = fs.statSync(photoPath);
-          console.log('Photo file size:', stats.size, 'bytes');
-          console.log('Photo file modified:', stats.mtime);
-        } else {
-          console.log('Photo file not found, will use dummy photo');
-          photoPath = null;
+          // Legacy file path - try to find file
+          const normalizedPhoto = certificate.student.profilePhoto.replace(/\\/g, '/');
+          console.log('Legacy photo path:', normalizedPhoto);
+          
+          if (normalizedPhoto.startsWith('uploads/')) {
+            photoPath = path.join('/tmp', normalizedPhoto);
+          } else {
+            photoPath = path.join('/tmp/uploads/profile-photos', normalizedPhoto);
+          }
+          
+          hasValidPhoto = fs.existsSync(photoPath);
+          console.log('Legacy photo file exists:', hasValidPhoto);
         }
       } else {
         console.log('No profile photo found for student, will use dummy photo');
       }
 
-      if (photoPath && fs.existsSync(photoPath)) {
+      if (hasValidPhoto) {
         try {
-          // Use fit with specific dimensions to ensure image fills the box properly
-          doc.image(photoPath, photoX + 2, photoY + 2, { 
-            width: photoWidth - 4, 
-            height: photoHeight - 4
-          });
+          if (certificate.student.profilePhoto.startsWith('data:image/')) {
+            // Handle base64 image
+            const base64Data = certificate.student.profilePhoto.split(',')[1];
+            const imageBuffer = Buffer.from(base64Data, 'base64');
+            
+            doc.image(imageBuffer, photoX + 2, photoY + 2, { 
+              width: photoWidth - 4, 
+              height: photoHeight - 4
+            });
+          } else if (photoPath && fs.existsSync(photoPath)) {
+            // Handle legacy file path
+            doc.image(photoPath, photoX + 2, photoY + 2, { 
+              width: photoWidth - 4, 
+              height: photoHeight - 4
+            });
+          } else {
+            this.drawDummyPhoto(doc, photoX, photoY, photoWidth, photoHeight);
+          }
         } catch (err) {
           console.log('Error loading image:', err.message);
           // If image fails to load, show dummy

@@ -33,10 +33,13 @@ const Profile = () => {
           console.log('Profile photo from backend:', response.data.profilePhoto);
           console.log('Base URL:', baseUrl);
           
-          if (response.data.profilePhoto.startsWith('http')) {
+          if (response.data.profilePhoto.startsWith('data:image/')) {
+            // Base64 image data
+            photoUrl = response.data.profilePhoto;
+          } else if (response.data.profilePhoto.startsWith('http')) {
             photoUrl = response.data.profilePhoto;
           } else {
-            // Normalize the path and ensure it starts with uploads/
+            // Legacy file path - normalize the path and ensure it starts with uploads/
             let normalizedPath = response.data.profilePhoto.replace(/\\/g, '/');
             if (!normalizedPath.startsWith('uploads/')) {
               normalizedPath = `uploads/profile-photos/${normalizedPath}`;
@@ -147,10 +150,13 @@ const Profile = () => {
         const baseUrl = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:3500';
         let photoUrl;
         
-        if (response.data.profilePhoto.startsWith('http')) {
+        if (response.data.profilePhoto.startsWith('data:image/')) {
+          // Base64 image data
+          photoUrl = response.data.profilePhoto;
+        } else if (response.data.profilePhoto.startsWith('http')) {
           photoUrl = response.data.profilePhoto;
         } else {
-          // Normalize the path and ensure it starts with uploads/
+          // Legacy file path - normalize the path and ensure it starts with uploads/
           let normalizedPath = response.data.profilePhoto.replace(/\\/g, '/');
           if (!normalizedPath.startsWith('uploads/')) {
             normalizedPath = `uploads/profile-photos/${normalizedPath}`;
@@ -287,10 +293,13 @@ const Profile = () => {
                       const baseUrl = process.env.NODE_ENV === 'production' ? window.location.origin : 'http://localhost:3500';
                       let photoUrl;
                       
-                      if (profile.profilePhoto.startsWith('http')) {
+                      if (profile.profilePhoto.startsWith('data:image/')) {
+                        // Base64 image data
+                        photoUrl = profile.profilePhoto;
+                      } else if (profile.profilePhoto.startsWith('http')) {
                         photoUrl = profile.profilePhoto;
                       } else {
-                        // Normalize the path and ensure it starts with uploads/
+                        // Legacy file path - normalize the path and ensure it starts with uploads/
                         let normalizedPath = profile.profilePhoto.replace(/\\/g, '/');
                         if (!normalizedPath.startsWith('uploads/')) {
                           normalizedPath = `uploads/profile-photos/${normalizedPath}`;

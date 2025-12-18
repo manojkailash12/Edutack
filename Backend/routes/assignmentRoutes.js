@@ -32,7 +32,7 @@ const upload = multer({
 
 // Create assignments directory if it doesn't exist
 const fs = require('fs');
-const assignmentDir = path.join(__dirname, '../public/assignments');
+const assignmentDir = path.join('/tmp/uploads/assignments');
 if (!fs.existsSync(assignmentDir)) {
   fs.mkdirSync(assignmentDir, { recursive: true });
 }
