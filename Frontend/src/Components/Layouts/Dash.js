@@ -444,19 +444,6 @@ const Dash = () => {
         {user.role === "admin" && (
           <>
             <Link
-              className="flex gap-2 rounded-lg bg-violet-300 p-6 text-base hover:bg-violet-400/90 dark:bg-violet-950/80 dark:hover:bg-violet-950 dark:hover:text-slate-300 duration-200 lg:text-lg"
-              to={"./admin_dashboard"}
-            >
-              <FaChartBar className="text-[2.5rem] lg:text-[4rem] " />
-              <div className="font-semibold">
-                Admin Dashboard
-                <p className="text-sm font-normal lg:text-base ">
-                  System Overview & Analytics
-                </p>
-              </div>
-            </Link>
-
-            <Link
               className="flex gap-2 rounded-lg bg-green-300 p-6 text-base hover:bg-green-400/90 dark:bg-green-950/80 dark:hover:bg-green-950 dark:hover:text-slate-300 duration-200 lg:text-lg"
               to={"./academic_calendar"}
             >

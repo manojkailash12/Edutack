@@ -282,12 +282,6 @@ const Nav = () => {
         {user.role === "admin" && (
           <>
             <li className="w-full border-t border-slate-700 my-2"></li>
-            <NavLink to={"./admin_dashboard"} className="w-full font-medium">
-              <li className="flex gap-2 duration-200 rounded-md px-4 py-2 hover:bg-violet-600/40 ">
-                <FaChartBar className="pt-[0.1rem] text-2xl  " />
-                Admin Dashboard
-              </li>
-            </NavLink>
             <NavLink to={"./academic_calendar"} className="w-full font-medium">
               <li className="flex gap-2 duration-200 rounded-md px-4 py-2 hover:bg-violet-600/40 ">
                 <FaCalendarAlt className="pt-[0.1rem] text-2xl  " />
@@ -346,6 +340,12 @@ const Nav = () => {
               <li className="flex gap-2 duration-200 rounded-md px-4 py-2 hover:bg-violet-600/40 ">
                 <HiOutlineDocumentReport className="pt-[0.1rem] text-2xl  " />
                 Certificate Management
+              </li>
+            </NavLink>
+            <NavLink to={"./manage_staff_attendance"} className="w-full font-medium">
+              <li className="flex gap-2 duration-200 rounded-md px-4 py-2 hover:bg-violet-600/40 ">
+                <IoCalendarOutline className="pt-[0.1rem] text-2xl  " />
+                Staff Attendance
               </li>
             </NavLink>
           </>
