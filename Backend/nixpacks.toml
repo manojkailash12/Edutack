@@ -5,7 +5,7 @@ nixPkgs = ['nodejs-18_x', 'npm-9_x']
 cmds = ['npm ci']
 
 [phases.build]
-cmds = ['npm run build 2>/dev/null || echo "No build script found"']
+cmds = ['echo "No build step required for Express server"']
 
 [start]
-cmd = 'npm start'
+cmd = 'node server.js'
