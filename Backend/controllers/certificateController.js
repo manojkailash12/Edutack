@@ -244,17 +244,27 @@ const generateCertificate = async (req, res) => {
 
     // Send email (non-blocking - don't wait for email to complete)
     let emailSent = false;
+    let emailError = null;
     try {
-      // Set a timeout for email sending (10 seconds)
+      console.log('=== EMAIL SENDING DEBUG ===');
+      console.log('Certificate ID:', certificate._id);
+      console.log('Student email:', certificate.student.email);
+      
+      // Set a timeout for email sending (15 seconds)
       const emailPromise = certificateService.sendCertificateEmail(certificate._id);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email timeout')), 10000)
+        setTimeout(() => reject(new Error('Email timeout after 15 seconds')), 15000)
       );
       
-      await Promise.race([emailPromise, timeoutPromise]);
+      const emailResult = await Promise.race([emailPromise, timeoutPromise]);
+      console.log('Email sent successfully:', emailResult);
       emailSent = true;
-    } catch (emailError) {
-      console.warn('Email sending failed, but certificate was generated successfully:', emailError.message);
+    } catch (error) {
+      emailError = error.message;
+      console.error('=== EMAIL ERROR ===');
+      console.error('Error message:', error.message);
+      console.error('Full error:', error);
+      console.warn('Email sending failed, but certificate was generated successfully');
       // Don't fail the entire operation if email fails
     }
 
@@ -263,7 +273,9 @@ const generateCertificate = async (req, res) => {
       data: {
         certificateId: certificate._id,
         pdfPath,
-        emailSent
+        emailSent,
+        emailError: emailError || null,
+        studentEmail: certificate.student.email
       }
     });
 

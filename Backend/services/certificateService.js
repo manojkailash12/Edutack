@@ -599,15 +599,44 @@ class CertificateService {
   // Send certificate via email
   async sendCertificateEmail(certificateId, customEmail = null, customMessage = null) {
     try {
+      console.log('=== CERTIFICATE EMAIL SERVICE DEBUG ===');
+      console.log('Certificate ID:', certificateId);
+      
       const certificate = await Certificate.findById(certificateId)
         .populate('student');
 
-      if (!certificate || !certificate.certificatePath) {
-        throw new Error('Certificate or PDF not found');
+      if (!certificate) {
+        throw new Error('Certificate not found');
       }
+      
+      if (!certificate.certificatePath) {
+        throw new Error('Certificate PDF not found');
+      }
+      
+      console.log('Certificate found:', {
+        id: certificate._id,
+        studentName: certificate.student.name,
+        studentEmail: certificate.student.email,
+        pdfPath: certificate.certificatePath
+      });
 
       const recipientEmail = customEmail || certificate.student.email;
+      
+      if (!recipientEmail) {
+        throw new Error('No email address found for student');
+      }
+      
+      console.log('Recipient email:', recipientEmail);
+      
       const personalMessage = customMessage ? `<p><em>${customMessage}</em></p>` : '';
+      
+      // Check if PDF file exists
+      const fs = require('fs');
+      if (!fs.existsSync(certificate.certificatePath)) {
+        throw new Error(`Certificate PDF file not found at path: ${certificate.certificatePath}`);
+      }
+      
+      console.log('PDF file exists, preparing email...');
 
       const mailOptions = {
         from: process.env.EMAIL_USER || 'libroflow8@gmail.com',
@@ -661,7 +690,19 @@ class CertificateService {
         ]
       };
 
+      console.log('Sending email with options:', {
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        attachmentCount: mailOptions.attachments.length
+      });
+      
       const info = await transporter.sendMail(mailOptions);
+      
+      console.log('Email sent successfully:', {
+        messageId: info.messageId,
+        response: info.response
+      });
       
       // Update certificate status only if sending to student's registered email
       if (!customEmail) {
@@ -669,6 +710,7 @@ class CertificateService {
         certificate.emailSentDate = new Date();
         certificate.status = 'distributed';
         await certificate.save();
+        console.log('Certificate status updated to distributed');
       }
 
       return {
