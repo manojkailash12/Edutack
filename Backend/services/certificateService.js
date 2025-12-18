@@ -708,15 +708,25 @@ class CertificateService {
         attachmentCount: mailOptions.attachments.length
       });
       
-      // Add timeout for email sending in production
-      const emailTimeout = process.env.NODE_ENV === 'production' ? 30000 : 15000; // 30s in production
+      // Simplified email sending for production reliability
+      console.log('Attempting to send email...');
       
-      const emailPromise = transporter.sendMail(mailOptions);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error(`Email timeout after ${emailTimeout/1000}s`)), emailTimeout)
-      );
+      try {
+        // Test transporter connection first
+        await transporter.verify();
+        console.log('Email transporter verified successfully');
+        
+        // Send email with extended timeout for production
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', info.messageId);
+        
+        return info;
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError);
+        throw emailError;
+      }
       
-      const info = await Promise.race([emailPromise, timeoutPromise]);
+      const info = await this.sendEmailWithRetry(mailOptions);
       
       console.log('Email sent successfully:', {
         messageId: info.messageId,
@@ -741,6 +751,35 @@ class CertificateService {
 
     } catch (error) {
       throw new Error(`Error sending email: ${error.message}`);
+    }
+  }
+
+  // Email sending with retry mechanism
+  async sendEmailWithRetry(mailOptions, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Email attempt ${attempt}/${maxRetries}`);
+        
+        // Verify connection before sending
+        await transporter.verify();
+        
+        // Send email
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`Email sent successfully on attempt ${attempt}`);
+        return info;
+        
+      } catch (error) {
+        console.error(`Email attempt ${attempt} failed:`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw new Error(`Email failed after ${maxRetries} attempts: ${error.message}`);
+        }
+        
+        // Wait before retry (exponential backoff)
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
 

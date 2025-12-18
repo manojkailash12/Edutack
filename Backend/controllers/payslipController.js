@@ -537,23 +537,78 @@ const downloadPayslip = asyncHandler(async (req, res) => {
   const { payslipId } = req.params;
 
   try {
+    console.log('=== PAYSLIP DOWNLOAD DEBUG ===');
+    console.log('Payslip ID:', payslipId);
+    console.log('Environment:', process.env.NODE_ENV);
+
     const payslip = await Payslip.findById(payslipId);
     if (!payslip) {
+      console.log('Payslip not found in database');
       return res.status(404).json({ message: 'Payslip not found' });
     }
 
-    const filePath = path.join(__dirname, '..', payslip.pdfPath);
+    console.log('Payslip found:', {
+      id: payslip._id,
+      pdfPath: payslip.pdfPath,
+      staffId: payslip.staffId
+    });
+
+    // Handle different path formats for production vs development
+    let filePath;
+    if (payslip.pdfPath) {
+      if (path.isAbsolute(payslip.pdfPath)) {
+        filePath = payslip.pdfPath;
+      } else {
+        filePath = path.join(__dirname, '..', payslip.pdfPath);
+      }
+    } else {
+      console.log('No PDF path found, regenerating payslip...');
+      // If no PDF path, regenerate the payslip
+      const { generatePayslipPDF } = require('../services/payslipService');
+      const pdfPath = await generatePayslipPDF(payslip);
+      payslip.pdfPath = pdfPath;
+      await payslip.save();
+      filePath = pdfPath;
+    }
+
+    console.log('Checking file path:', filePath);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Payslip file not found' });
+      console.log('File not found, attempting to regenerate...');
+      
+      try {
+        // Regenerate the PDF
+        const { generatePayslipPDF } = require('../services/payslipService');
+        const newPdfPath = await generatePayslipPDF(payslip);
+        payslip.pdfPath = newPdfPath;
+        await payslip.save();
+        filePath = newPdfPath;
+        
+        console.log('PDF regenerated at:', filePath);
+      } catch (regenError) {
+        console.error('Failed to regenerate PDF:', regenError);
+        return res.status(500).json({ 
+          message: 'Payslip file not found and could not be regenerated',
+          error: regenError.message 
+        });
+      }
     }
 
     const filename = `payslip_${payslip.employeeId}_${payslip.month}_${payslip.year}.pdf`;
+    
+    console.log('Sending file:', filename);
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     
     const fileStream = fs.createReadStream(filePath);
+    fileStream.on('error', (streamError) => {
+      console.error('File stream error:', streamError);
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Error reading payslip file' });
+      }
+    });
+    
     fileStream.pipe(res);
 
   } catch (error) {

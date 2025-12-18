@@ -250,10 +250,11 @@ const generateCertificate = async (req, res) => {
       console.log('Certificate ID:', certificate._id);
       console.log('Student email:', certificate.student.email);
       
-      // Set a timeout for email sending (15 seconds)
+      // Send email with production-friendly timeout
+      const emailTimeout = process.env.NODE_ENV === 'production' ? 45000 : 15000; // 45s in production
       const emailPromise = certificateService.sendCertificateEmail(certificate._id);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email timeout after 15 seconds')), 15000)
+        setTimeout(() => reject(new Error(`Email timeout after ${emailTimeout/1000} seconds`)), emailTimeout)
       );
       
       const emailResult = await Promise.race([emailPromise, timeoutPromise]);
