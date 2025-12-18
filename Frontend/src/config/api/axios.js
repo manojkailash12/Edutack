@@ -4,18 +4,13 @@ import axios from "axios";
 const getBaseURL = () => {
   if (process.env.NODE_ENV === 'production') {
     // Check if custom API URL is provided
-    if (process.env.REACT_APP_API_URL) {
+    if (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim() !== '') {
       return process.env.REACT_APP_API_URL;
     }
     
-    // Auto-detect Vercel API URL based on current domain
-    if (typeof window !== 'undefined') {
-      const currentDomain = window.location.origin;
-      return `${currentDomain}/api`;
-    }
-    
-    // Fallback for server-side rendering or build time
-    return '/api';
+    // For Vercel deployment, both frontend and backend are on same domain
+    // Use relative path for API calls
+    return '';
   }
   // Use localhost for development
   return "http://localhost:3500";
