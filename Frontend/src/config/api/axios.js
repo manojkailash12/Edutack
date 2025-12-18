@@ -4,7 +4,7 @@ import axios from "axios";
 const getBaseURL = () => {
   if (process.env.NODE_ENV === 'production') {
     // Always use the custom API URL in production
-    return process.env.REACT_APP_API_URL || 'https://edutac.netlify.app';
+    return process.env.REACT_APP_API_URL || 'https://eduta.netlify.app';
   }
   // Use localhost for development
   return "http://localhost:3500";
