@@ -8,14 +8,14 @@ const getBaseURL = () => {
       return process.env.REACT_APP_API_URL;
     }
     
-    // Auto-detect Netlify Functions URL based on current domain
+    // Auto-detect Vercel API URL based on current domain
     if (typeof window !== 'undefined') {
       const currentDomain = window.location.origin;
-      return `${currentDomain}/.netlify/functions/api`;
+      return `${currentDomain}/api`;
     }
     
     // Fallback for server-side rendering or build time
-    return '/.netlify/functions/api';
+    return '/api';
   }
   // Use localhost for development
   return "http://localhost:3500";

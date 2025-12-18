@@ -1,0 +1,121 @@
+{
+  "version": 2,
+  "name": "edutrack",
+  "builds": [
+    {
+      "src": "Frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    },
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/auth/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/paper/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/notes/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/internal/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/attendance/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/time-schedule/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/staff/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/student/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/users/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/assignments/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/quizzes/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/semester/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/feedback/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/leave/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/staff-attendance/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/certificates/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/payslips/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/academic-calendar/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/otp/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/static/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/Frontend/build/index.html"
+    }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
+}

@@ -4,12 +4,12 @@
   "description": "Educational Management System - Full Stack Application",
   "main": "index.js",
   "scripts": {
-    "prepare-deployment": "node prepare-deployment.js",
+    "deploy-check": "node deploy-to-vercel.js",
     "install-all": "cd Frontend && npm install && cd ../Backend && npm install",
     "dev-frontend": "cd Frontend && npm start",
     "dev-backend": "cd Backend && npm run dev",
     "build-frontend": "cd Frontend && npm run build",
-    "test-deployment": "node prepare-deployment.js"
+    "build": "cd Frontend && npm run build"
   },
   "keywords": [
     "education",
