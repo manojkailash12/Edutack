@@ -20,6 +20,7 @@ const ViewAttendance = () => {
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [departmentCache, setDepartmentCache] = useState(new Map());
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     if (attendanceResponse) {
@@ -96,6 +97,16 @@ const ViewAttendance = () => {
       fetchDepartmentAttendance(selectedDepartment);
     }
   }, [selectedDepartment, user, fetchDepartmentAttendance]);
+
+  // Auto-load attendance for HOD users
+  useEffect(() => {
+    if (user?.role === 'HOD' && user.department && !initialLoadComplete) {
+      console.log('=== AUTO-LOADING HOD ATTENDANCE ===');
+      console.log('HOD Department:', user.department);
+      fetchDepartmentAttendance(user.department);
+      setInitialLoadComplete(true);
+    }
+  }, [user, fetchDepartmentAttendance, initialLoadComplete]);
 
   const downloadExcel = () => {
     console.log('=== EXCEL DOWNLOAD DEBUG ===');
@@ -245,7 +256,7 @@ const ViewAttendance = () => {
         </div>
       )}
 
-      {user.role === 'admin' && !selectedDepartment ? (
+      {(user.role === 'admin' && !selectedDepartment) ? (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="text-center py-8">
             <h3 className="text-lg font-semibold text-gray-600">Please select a department to view attendance reports</h3>
@@ -265,18 +276,19 @@ const ViewAttendance = () => {
             <div className="flex space-x-2">
               <button
                 onClick={() => {
-                  if (selectedDepartment) {
+                  const departmentToRefresh = user.role === 'admin' ? selectedDepartment : user.department;
+                  if (departmentToRefresh) {
                     setDepartmentCache(prev => {
                       const newCache = new Map(prev);
-                      newCache.delete(selectedDepartment);
+                      newCache.delete(departmentToRefresh);
                       return newCache;
                     });
                     apiService.clearCache('attendance');
-                    fetchDepartmentAttendance(selectedDepartment);
+                    fetchDepartmentAttendance(departmentToRefresh);
                   }
                 }}
                 className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm disabled:opacity-50"
-                disabled={!selectedDepartment || localLoading}
+                disabled={(user.role === 'admin' && !selectedDepartment) || localLoading}
                 title="Refresh attendance data"
               >
                 <span>🔄</span>
@@ -347,6 +359,17 @@ const ViewAttendance = () => {
           {attendanceData.length === 0 && !localLoading && (
             <div className="text-center py-8">
               <p className="text-gray-500 dark:text-gray-400">No attendance data found for this department.</p>
+              {(user.role === 'HOD' || (user.role === 'admin' && selectedDepartment)) && (
+                <button 
+                  onClick={() => {
+                    const dept = user.role === 'admin' ? selectedDepartment : user.department;
+                    fetchDepartmentAttendance(dept);
+                  }}
+                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Try Loading Again
+                </button>
+              )}
             </div>
           )}
           </div>
