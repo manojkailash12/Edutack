@@ -17,12 +17,6 @@ const StaffCertificateViewer = () => {
   const [sections, setSections] = useState([]);
   const [academicYears, setAcademicYears] = useState([]);
 
-  useEffect(() => {
-    if (user?.role === 'teacher' || user?.role === 'HOD') {
-      fetchDepartmentsAndSections();
-    }
-  }, [user]);
-
   const fetchDepartmentsAndSections = useCallback(async () => {
     try {
       const response = await axios.get('/certificates/departments-sections');
@@ -34,6 +28,12 @@ const StaffCertificateViewer = () => {
       console.error('Error fetching departments and sections:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (user?.role === 'teacher' || user?.role === 'HOD') {
+      fetchDepartmentsAndSections();
+    }
+  }, [user, fetchDepartmentsAndSections]);
 
   const fetchCertificates = useCallback(async () => {
     setLoading(true);
