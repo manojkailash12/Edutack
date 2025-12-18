@@ -86,6 +86,17 @@ const StaffAttendanceDashboard = () => {
     }
   }, [user, selectedMonth, selectedYear, fetchTodayStatus, fetchAttendanceHistory, fetchLeaveStats]);
 
+  // Auto-refresh today's status every 30 seconds to keep checkout time updated
+  useEffect(() => {
+    if (!user?._id) return;
+
+    const interval = setInterval(() => {
+      fetchTodayStatus();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user?._id, fetchTodayStatus]);
+
   const handleCheckIn = async (method = 'manual') => {
     setCheckingIn(true);
     try {
@@ -96,7 +107,12 @@ const StaffAttendanceDashboard = () => {
       });
       
       toast.success(response.data.message);
-      fetchTodayStatus();
+      
+      // Immediately refresh all data after check-in
+      await Promise.all([
+        fetchTodayStatus(),
+        fetchAttendanceHistory()
+      ]);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error checking in');
     } finally {
@@ -112,7 +128,12 @@ const StaffAttendanceDashboard = () => {
       });
       
       toast.success(response.data.message);
-      fetchTodayStatus();
+      
+      // Immediately refresh all data after checkout
+      await Promise.all([
+        fetchTodayStatus(),
+        fetchAttendanceHistory()
+      ]);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error checking out');
     } finally {
@@ -145,11 +166,24 @@ const StaffAttendanceDashboard = () => {
   };
 
   const formatTime = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString || dateString === 'N/A' || dateString === null || dateString === undefined) {
+      return 'N/A';
+    }
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'N/A';
+      }
+      
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'N/A';
+    }
   };
 
   const formatDate = (dateString) => {
