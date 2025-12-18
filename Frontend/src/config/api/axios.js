@@ -3,19 +3,8 @@ import axios from "axios";
 // Determine the base URL based on environment
 const getBaseURL = () => {
   if (process.env.NODE_ENV === 'production') {
-    // Check if custom API URL is provided
-    if (process.env.REACT_APP_API_URL) {
-      return process.env.REACT_APP_API_URL;
-    }
-    
-    // Auto-detect Netlify Functions URL based on current domain
-    if (typeof window !== 'undefined') {
-      const currentDomain = window.location.origin;
-      return `${currentDomain}/.netlify/functions/api`;
-    }
-    
-    // Fallback for server-side rendering or build time
-    return '/.netlify/functions/api';
+    // Always use the custom API URL in production
+    return process.env.REACT_APP_API_URL || 'https://edutac.netlify.app';
   }
   // Use localhost for development
   return "http://localhost:3500";
