@@ -23,6 +23,10 @@ const ViewAttendance = () => {
 
   useEffect(() => {
     if (attendanceResponse) {
+      console.log('=== ATTENDANCE RESPONSE DEBUG ===');
+      console.log('Full response:', attendanceResponse);
+      console.log('Attendance report:', attendanceResponse.attendanceReport);
+      console.log('Report length:', attendanceResponse.attendanceReport?.length);
       setAttendanceData(attendanceResponse.attendanceReport || []);
     }
   }, [attendanceResponse]);
@@ -74,6 +78,10 @@ const ViewAttendance = () => {
       
       // Cache the result
       setDepartmentCache(prev => new Map(prev.set(department, attendanceReport)));
+      console.log('=== DEPARTMENT ATTENDANCE DEBUG ===');
+      console.log('Department:', department);
+      console.log('Attendance report:', attendanceReport);
+      console.log('Report length:', attendanceReport.length);
       setAttendanceData(attendanceReport);
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -90,6 +98,10 @@ const ViewAttendance = () => {
   }, [selectedDepartment, user, fetchDepartmentAttendance]);
 
   const downloadExcel = () => {
+    console.log('=== EXCEL DOWNLOAD DEBUG ===');
+    console.log('Attendance data length:', attendanceData.length);
+    console.log('Attendance data:', attendanceData);
+    
     if (!attendanceData.length) {
       toast.error("No attendance data available");
       return;
@@ -114,6 +126,10 @@ const ViewAttendance = () => {
   };
 
   const downloadPDF = () => {
+    console.log('=== PDF DOWNLOAD DEBUG ===');
+    console.log('Attendance data length:', attendanceData.length);
+    console.log('Attendance data:', attendanceData);
+    
     if (!attendanceData.length) {
       toast.error("No attendance data available");
       return;
@@ -270,6 +286,7 @@ const ViewAttendance = () => {
                 onClick={downloadExcel}
                 className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors text-sm disabled:opacity-50"
                 disabled={!attendanceData.length || localLoading}
+                title={!attendanceData.length ? "No data available" : "Download Excel report"}
               >
                 <FaFileExcel />
                 <span>Excel</span>
@@ -278,6 +295,7 @@ const ViewAttendance = () => {
                 onClick={downloadPDF}
                 className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors text-sm disabled:opacity-50"
                 disabled={!attendanceData.length || localLoading}
+                title={!attendanceData.length ? "No data available" : "Download PDF report"}
               >
                 <FaFilePdf />
                 <span>PDF</span>
