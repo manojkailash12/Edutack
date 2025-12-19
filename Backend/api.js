@@ -6,12 +6,18 @@ const fs = require('fs');
 
 // Create directories for serverless environment
 const createDirectories = () => {
-  const directories = ['/tmp/certificates', '/tmp/payslips', '/tmp/reports', '/tmp/profile-photos', '/tmp/notes', '/tmp/assignments'];
-  directories.forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
+  try {
+    const directories = ['/tmp/certificates', '/tmp/payslips', '/tmp/reports', '/tmp/profile-photos', '/tmp/notes', '/tmp/assignments'];
+    directories.forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+    console.log('✅ Directories created successfully');
+  } catch (error) {
+    console.log('⚠️ Directory creation failed:', error.message);
+    // Continue without failing - directories will be created on demand
+  }
 };
 
 // Initialize directories
@@ -281,58 +287,221 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Try to delegate to Express app for complex routes
-    try {
-      const express = require('express');
-      const app = express();
+    // Additional essential endpoints
+
+    // Get staff by department
+    if (path.startsWith('/staff/department/') && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      const department = decodeURIComponent(path.split('/')[3]);
       
-      // Middleware
-      app.use(express.json({ limit: '50mb' }));
-      app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-      // Import routes with error handling
-      const routes = [
-        { path: '/staff', file: './routes/staffRoutes' },
-        { path: '/certificates', file: './routes/certificateRoutes' },
-        { path: '/payslips', file: './routes/payslipRoutes' },
-        { path: '/attendance', file: './routes/attendanceRoutes' },
-        { path: '/assignments', file: './routes/assignmentRoutes' },
-        { path: '/quizzes', file: './routes/quizRoutes' },
-        { path: '/internal', file: './routes/internalRoutes' },
-        { path: '/feedback', file: './routes/feedbackRoutes' },
-        { path: '/leave', file: './routes/leaveRoutes' },
-        { path: '/staff-attendance', file: './routes/staffAttendanceRoutes' },
-        { path: '/otp', file: './routes/otpRoutes' }
-      ];
-
-      routes.forEach(route => {
-        try {
-          const routeHandler = require(route.file);
-          app.use(route.path, routeHandler);
-        } catch (err) {
-          console.log(`Route ${route.path} not available:`, err.message);
-        }
-      });
-
-      // Handle the request with Express app
-      return new Promise((resolve) => {
-        const mockRes = {
-          ...res,
-          end: (data) => {
-            if (data) res.end(data);
-            else res.end();
-            resolve();
-          }
-        };
-        
-        app(req, mockRes, () => {
-          // If no route matched, continue to fallback
-          resolve();
+      try {
+        const staff = await Staff.find({ department }).select('-password').lean();
+        return res.json(staff);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching staff by department", 
+          error: error.message 
         });
-      });
+      }
+    }
 
-    } catch (expressError) {
-      console.log('Express routing failed, using manual fallback');
+    // HOD Dashboard endpoints
+    if (path.startsWith('/staff/hod-dashboard/') && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      const Student = require('./models/Student');
+      const Paper = require('./models/Paper');
+      const Internal = require('./models/Internal');
+      const Attendance = require('./models/Attendance');
+      
+      const department = decodeURIComponent(path.split('/')[3]);
+      
+      try {
+        const [teachers, students, papers, internalMarks, attendanceData] = await Promise.all([
+          Staff.find({ department, role: { $in: ['teacher', 'HOD'] } }).select('-password').lean(),
+          Student.find({ department }).lean(),
+          Paper.find({ department }).populate('teacher', 'name').lean(),
+          Internal.find().populate('paper', 'paper semester department').lean(),
+          Attendance.find().populate('paper', 'paper department').lean()
+        ]);
+
+        // Process internal marks for this department
+        const departmentInternalMarks = [];
+        internalMarks.forEach(internal => {
+          if (internal.paper?.department === department) {
+            internal.marks.forEach(mark => {
+              departmentInternalMarks.push({
+                studentId: mark._id,
+                rollNo: mark.rollNo,
+                studentName: mark.name,
+                section: students.find(s => s._id.toString() === mark._id.toString())?.section || 'Unknown',
+                paperName: internal.paper?.paper,
+                semester: internal.paper?.semester,
+                test: mark.midMarks || 0,
+                seminar: mark.lab || 0,
+                assignment: mark.assignmentQuiz || 0,
+                attendance: mark.attendance || 0,
+                total: mark.total || 0
+              });
+            });
+          }
+        });
+
+        // Process attendance data for this department
+        const attendanceSummary = {};
+        attendanceData.forEach(attendanceRecord => {
+          if (attendanceRecord.paper?.department === department) {
+            attendanceRecord.students.forEach(studentRecord => {
+              const key = `${studentRecord.student}-${studentRecord.rollNo}`;
+              if (!attendanceSummary[key]) {
+                attendanceSummary[key] = {
+                  studentId: studentRecord.student,
+                  rollNo: studentRecord.rollNo,
+                  studentName: studentRecord.name,
+                  section: attendanceRecord.section,
+                  totalClasses: 0,
+                  presentClasses: 0
+                };
+              }
+              attendanceSummary[key].totalClasses++;
+              if (studentRecord.status === 'present') {
+                attendanceSummary[key].presentClasses++;
+              }
+            });
+          }
+        });
+
+        const attendanceReport = Object.values(attendanceSummary).map(summary => ({
+          ...summary,
+          attendancePercentage: summary.totalClasses > 0 
+            ? Math.round((summary.presentClasses / summary.totalClasses) * 100)
+            : 0
+        }));
+
+        return res.json({
+          teachers,
+          students,
+          papers,
+          internalMarks: departmentInternalMarks,
+          attendanceData: attendanceReport
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching HOD dashboard data", 
+          error: error.message 
+        });
+      }
+    }
+
+    // HOD Summary endpoints
+    if (path.startsWith('/staff/hod-summary/') && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      const Student = require('./models/Student');
+      const Paper = require('./models/Paper');
+      const Attendance = require('./models/Attendance');
+      
+      const department = decodeURIComponent(path.split('/')[3]);
+      
+      try {
+        const [teachers, students, papers, attendanceData] = await Promise.all([
+          Staff.find({ department, role: { $in: ['teacher', 'HOD'] } }).lean(),
+          Student.find({ department }).lean(),
+          Paper.find({ department }).lean(),
+          Attendance.find().populate('paper', 'department').lean()
+        ]);
+
+        // Calculate section stats
+        const sectionStats = students.reduce((acc, student) => {
+          const section = student.section || 'Unknown';
+          acc[section] = (acc[section] || 0) + 1;
+          return acc;
+        }, {});
+
+        const sectionStatsArray = Object.entries(sectionStats).map(([section, count]) => ({
+          _id: section,
+          count
+        }));
+
+        // Calculate semester stats
+        const semesterStats = papers.reduce((acc, paper) => {
+          const semester = paper.semester || 'Unknown';
+          acc[semester] = (acc[semester] || 0) + 1;
+          return acc;
+        }, {});
+
+        const semesterStatsArray = Object.entries(semesterStats).map(([semester, count]) => ({
+          _id: semester,
+          count
+        }));
+
+        // Calculate average attendance for department
+        let totalAttendancePercentage = 0;
+        let studentCount = 0;
+
+        const attendanceSummary = {};
+        attendanceData.forEach(attendanceRecord => {
+          if (attendanceRecord.paper?.department === department) {
+            attendanceRecord.students.forEach(studentRecord => {
+              const studentId = studentRecord.student.toString();
+              if (!attendanceSummary[studentId]) {
+                attendanceSummary[studentId] = { total: 0, present: 0 };
+              }
+              attendanceSummary[studentId].total++;
+              if (studentRecord.status === 'present') {
+                attendanceSummary[studentId].present++;
+              }
+            });
+          }
+        });
+
+        Object.values(attendanceSummary).forEach(summary => {
+          if (summary.total > 0) {
+            totalAttendancePercentage += (summary.present / summary.total) * 100;
+            studentCount++;
+          }
+        });
+
+        const averageAttendance = studentCount > 0 
+          ? Math.round(totalAttendancePercentage / studentCount)
+          : 0;
+
+        return res.json({
+          totalTeachers: teachers.length,
+          totalStudents: students.length,
+          totalPapers: papers.length,
+          averageAttendance,
+          sectionStats: sectionStatsArray,
+          semesterStats: semesterStatsArray
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching HOD summary data", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Certificates dashboard endpoint
+    if (path === '/certificates/dashboard' && req.method === 'GET') {
+      const Student = require('./models/Student');
+      const ExternalMarks = require('./models/ExternalMarks');
+      
+      try {
+        const totalStudents = await Student.countDocuments();
+        const studentsWithMarks = await ExternalMarks.distinct('student');
+        const eligibleForCertificate = studentsWithMarks.length;
+        
+        return res.json({
+          totalStudents,
+          eligibleForCertificate,
+          pendingStudents: totalStudents - eligibleForCertificate,
+          generatedCertificates: 0
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching certificate dashboard data", 
+          error: error.message 
+        });
+      }
     }
 
     // For other endpoints, return 404
