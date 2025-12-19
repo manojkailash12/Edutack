@@ -634,6 +634,98 @@ module.exports = async (req, res) => {
       }
     }
 
+    // Get all payslips (for admin)
+    if (path === '/payslips/all' && req.method === 'GET') {
+      const Payslip = require('./models/Payslip');
+      
+      try {
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const year = url.searchParams.get('year');
+        const month = url.searchParams.get('month');
+        const department = url.searchParams.get('department');
+        
+        let query = {};
+        if (year && year !== 'all') query.year = parseInt(year);
+        if (month && month !== 'all') query.month = parseInt(month);
+        
+        const payslips = await Payslip.find(query)
+          .populate('staffId', 'name employeeId department')
+          .sort({ year: -1, month: -1 })
+          .lean();
+        
+        // Filter by department if specified
+        let filteredPayslips = payslips;
+        if (department && department !== 'all') {
+          filteredPayslips = payslips.filter(p => p.staffId?.department === department);
+        }
+        
+        // Transform data to match frontend expectations
+        const transformedPayslips = filteredPayslips.map(payslip => ({
+          ...payslip,
+          staffName: payslip.staffName || payslip.staffId?.name,
+          employeeId: payslip.employeeId || payslip.staffId?.employeeId,
+          department: payslip.department || payslip.staffId?.department
+        }));
+        
+        return res.json(transformedPayslips);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching all payslips", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Download payslip
+    if (path.startsWith('/payslips/') && path.endsWith('/download') && req.method === 'GET') {
+      const Payslip = require('./models/Payslip');
+      const payslipId = path.split('/')[2];
+      
+      try {
+        const payslip = await Payslip.findById(payslipId);
+        if (!payslip) {
+          return res.status(404).json({ message: 'Payslip not found' });
+        }
+        
+        // Generate PDF using payslip service
+        const payslipService = require('./services/payslipService');
+        const pdfBuffer = await payslipService.generatePayslipPDF(payslip);
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="payslip_${payslip.staffName}_${payslip.month}_${payslip.year}.pdf"`);
+        return res.send(pdfBuffer);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error downloading payslip", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Email payslip
+    if (path.startsWith('/payslips/') && path.endsWith('/email') && req.method === 'POST') {
+      const Payslip = require('./models/Payslip');
+      const payslipId = path.split('/')[2];
+      
+      try {
+        const payslip = await Payslip.findById(payslipId).populate('staffId', 'email name');
+        if (!payslip) {
+          return res.status(404).json({ message: 'Payslip not found' });
+        }
+        
+        // Send email using payslip service
+        const payslipService = require('./services/payslipService');
+        await payslipService.emailPayslip(payslip);
+        
+        return res.json({ message: 'Payslip emailed successfully' });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error emailing payslip", 
+          error: error.message 
+        });
+      }
+    }
+
     // Certificate endpoints
     if (path.startsWith('/certificates/student/') && req.method === 'GET') {
       const Certificate = require('./models/Certificate');
@@ -649,6 +741,177 @@ module.exports = async (req, res) => {
       } catch (error) {
         return res.status(500).json({ 
           message: "Error fetching certificates", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Internal marks endpoints
+    if (path.startsWith('/internal/') && req.method === 'GET') {
+      const Internal = require('./models/Internal');
+      const paperId = path.split('/')[2];
+      
+      try {
+        const internalMarks = await Internal.find({ paper: paperId })
+          .populate('paper', 'paper semester')
+          .lean();
+        
+        return res.json(internalMarks);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching internal marks", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Assignments endpoints
+    if (path.startsWith('/assignments/') && req.method === 'GET') {
+      const Assignment = require('./models/Assignment');
+      const paperId = path.split('/')[2];
+      
+      try {
+        const assignments = await Assignment.find({ paper: paperId })
+          .populate('paper', 'paper')
+          .lean();
+        
+        return res.json(assignments);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching assignments", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Quizzes endpoints
+    if (path.startsWith('/quizzes/') && req.method === 'GET') {
+      const Quiz = require('./models/Quiz');
+      const paperId = path.split('/')[2];
+      
+      try {
+        const quizzes = await Quiz.find({ paper: paperId })
+          .populate('paper', 'paper')
+          .lean();
+        
+        return res.json(quizzes);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching quizzes", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Attendance endpoints
+    if (path.startsWith('/attendance/') && req.method === 'GET') {
+      const Attendance = require('./models/Attendance');
+      
+      if (path.includes('/paper/')) {
+        // Get attendance for a specific paper
+        const paperId = path.split('/')[3];
+        try {
+          const attendance = await Attendance.find({ paper: paperId })
+            .populate('paper', 'paper')
+            .lean();
+          
+          return res.json(attendance);
+        } catch (error) {
+          return res.status(500).json({ 
+            message: "Error fetching attendance", 
+            error: error.message 
+          });
+        }
+      }
+    }
+
+    // Feedback endpoints
+    if (path.startsWith('/feedback/') && req.method === 'GET') {
+      const Feedback = require('./models/Feedback');
+      
+      try {
+        let query = {};
+        if (path.includes('/student/')) {
+          const studentId = path.split('/')[3];
+          query.student = studentId;
+        } else if (path.includes('/paper/')) {
+          const paperId = path.split('/')[3];
+          query.paper = paperId;
+        }
+        
+        const feedback = await Feedback.find(query)
+          .populate('student', 'name rollNo')
+          .populate('paper', 'paper')
+          .lean();
+        
+        return res.json(feedback);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching feedback", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Leave endpoints
+    if (path.startsWith('/leave/') && req.method === 'GET') {
+      const StaffLeave = require('./models/StaffLeave');
+      const StudentLeave = require('./models/StudentLeave');
+      
+      try {
+        if (path.includes('/staff/')) {
+          const staffId = path.split('/')[3];
+          const leaves = await StaffLeave.find({ staff: staffId })
+            .populate('staff', 'name employeeId')
+            .lean();
+          return res.json(leaves);
+        } else if (path.includes('/student/')) {
+          const studentId = path.split('/')[3];
+          const leaves = await StudentLeave.find({ student: studentId })
+            .populate('student', 'name rollNo')
+            .lean();
+          return res.json(leaves);
+        }
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching leave requests", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Academic calendar endpoints
+    if (path.startsWith('/academic-calendar') && req.method === 'GET') {
+      const AcademicCalendar = require('./models/AcademicCalendar');
+      
+      try {
+        const events = await AcademicCalendar.find().lean();
+        return res.json(events);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching academic calendar", 
+          error: error.message 
+        });
+      }
+    }
+
+    // OTP endpoints
+    if (path.startsWith('/otp/') && req.method === 'POST') {
+      const otpService = require('./services/otpService');
+      
+      try {
+        if (path.includes('/send')) {
+          const { email, type } = req.body;
+          await otpService.sendOTP(email, type);
+          return res.json({ message: 'OTP sent successfully' });
+        } else if (path.includes('/verify')) {
+          const { email, otp } = req.body;
+          const isValid = await otpService.verifyOTP(email, otp);
+          return res.json({ valid: isValid });
+        }
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error with OTP operation", 
           error: error.message 
         });
       }
@@ -674,7 +937,19 @@ module.exports = async (req, res) => {
         'GET /staff/hod-summary/:department',
         'GET /certificates/dashboard',
         'GET /certificates/student/:id',
+        'GET /payslips/all',
         'GET /payslips/staff/:id',
+        'GET /payslips/:id/download',
+        'POST /payslips/:id/email',
+        'GET /internal/:paperId',
+        'GET /assignments/:paperId',
+        'GET /quizzes/:paperId',
+        'GET /attendance/paper/:paperId',
+        'GET /feedback/student/:id',
+        'GET /leave/staff/:id',
+        'GET /academic-calendar',
+        'POST /otp/send',
+        'POST /otp/verify',
         'POST /staff-attendance/check-in',
         'POST /staff-attendance/check-out',
         'GET /staff-attendance/status/:id'
