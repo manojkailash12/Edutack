@@ -9,8 +9,8 @@ const getBaseURL = () => {
     }
     
     // For Vercel deployment, both frontend and backend are on same domain
-    // Use relative path for API calls
-    return '';
+    // Use /api prefix for API calls
+    return '/api';
   }
   // Use localhost for development
   return "http://localhost:3500";
