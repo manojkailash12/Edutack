@@ -30,21 +30,11 @@ const upload = multer({
   }
 });
 
-// Create assignments directory if it doesn't exist (only in development)
+// Create assignments directory if it doesn't exist
 const fs = require('fs');
-const assignmentDir = process.env.NODE_ENV === 'production' 
-  ? '/tmp/assignments' 
-  : path.join(__dirname, '../uploads/assignments');
-
-// Only create directory if not in serverless environment
-if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
-  if (!fs.existsSync(assignmentDir)) {
-    try {
-      fs.mkdirSync(assignmentDir, { recursive: true });
-    } catch (error) {
-      console.log('Could not create assignments directory:', error.message);
-    }
-  }
+const assignmentDir = path.join(__dirname, '../uploads/assignments');
+if (!fs.existsSync(assignmentDir)) {
+  fs.mkdirSync(assignmentDir, { recursive: true });
 }
 
 // Get teacher's papers for assignments

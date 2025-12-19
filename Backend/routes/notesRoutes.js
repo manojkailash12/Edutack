@@ -24,21 +24,11 @@ const upload = multer({
   }
 });
 
-// Create uploads directory if it doesn't exist (only in development)
+// Create uploads directory if it doesn't exist
 const fs = require('fs');
-const uploadDir = process.env.NODE_ENV === 'production' 
-  ? '/tmp/notes' 
-  : path.join(__dirname, '../uploads/notes');
-
-// Only create directory if not in serverless environment
-if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
-  if (!fs.existsSync(uploadDir)) {
-    try {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    } catch (error) {
-      console.log('Could not create notes directory:', error.message);
-    }
-  }
+const uploadDir = path.join(__dirname, '../uploads/notes');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 router

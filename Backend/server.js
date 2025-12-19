@@ -4,38 +4,22 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
-// Create directories for serverless environment
-const createDirectories = () => {
-  if (process.env.NODE_ENV === 'production') {
-    // Use /tmp for serverless environments (Vercel)
-    const directories = ['/tmp/certificates', '/tmp/payslips', '/tmp/reports', '/tmp/profile-photos', '/tmp/notes', '/tmp/assignments'];
-    directories.forEach(dir => {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    });
-  } else {
-    // Use uploads for development
-    const uploadsDir = path.join(__dirname, 'uploads');
-    const profilePhotosDir = path.join(uploadsDir, 'profile-photos');
-    const certificatesDir = path.join(uploadsDir, 'certificates');
-    const notesDir = path.join(uploadsDir, 'notes');
-    const assignmentsDir = path.join(uploadsDir, 'assignments');
-    const payslipsDir = path.join(uploadsDir, 'payslips');
-    const reportsDir = path.join(uploadsDir, 'reports');
-    const assetsDir = path.join(__dirname, 'assets');
+// Create necessary directories
+const uploadsDir = path.join(__dirname, 'uploads');
+const profilePhotosDir = path.join(uploadsDir, 'profile-photos');
+const certificatesDir = path.join(uploadsDir, 'certificates');
+const notesDir = path.join(uploadsDir, 'notes');
+const assignmentsDir = path.join(uploadsDir, 'assignments');
+const payslipsDir = path.join(uploadsDir, 'payslips');
+const reportsDir = path.join(uploadsDir, 'reports');
+const assetsDir = path.join(__dirname, 'assets');
 
-    const directories = [uploadsDir, profilePhotosDir, certificatesDir, notesDir, assignmentsDir, payslipsDir, reportsDir, assetsDir];
-    directories.forEach(dir => {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    });
+const directories = [uploadsDir, profilePhotosDir, certificatesDir, notesDir, assignmentsDir, payslipsDir, reportsDir, assetsDir];
+directories.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-};
-
-// Initialize directories
-createDirectories();
+});
 
 const app = express();
 const { logger, logEvents } = require("./middleware/logger");
@@ -177,27 +161,21 @@ app.all("*", (req, res) => {
 
 app.use(errorHandler);
 
-// For serverless deployment (Vercel), export the app
-if (process.env.NODE_ENV === 'production') {
-  module.exports = app;
-} else {
-  // For local development, start the server
-  mongoose.connection.once("open", () => {
-    console.log("Connected to MongoDB");
-    app.listen(PORT, () => console.log(`server running on PORT ${PORT}`));
-  });
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+  app.listen(PORT, () => console.log(`server running on PORT ${PORT}`));
+});
 
-  mongoose.connection.on("error", (err) => {
-    console.log(err);
-    logEvents(
-      `${err.no}:${err.code}\t${err.syscall}\t${err.hostname}`,
-      "mongoErrLog.log"
-    );
-  });
+mongoose.connection.on("error", (err) => {
+  console.log(err);
+  logEvents(
+    `${err.no}:${err.code}\t${err.syscall}\t${err.hostname}`,
+    "mongoErrLog.log"
+  );
+});
 
-  mongoose.connection.on("uncaughtException", function (err) {
-    console.log(err);
-  });
-}
+mongoose.connection.on("uncaughtException", function (err) {
+  console.log(err);
+});
 
 
