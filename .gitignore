@@ -91,5 +91,11 @@ Thumbs.db
 *.swo
 *~
 
-# Local Netlify folder
+# Deployment folders and files
 .netlify
+.vercel
+vercel.json
+netlify.toml
+.env.production
+DEPLOYMENT_*.md
+ENVIRONMENT_SETUP.md
