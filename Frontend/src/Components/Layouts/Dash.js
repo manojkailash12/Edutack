@@ -48,22 +48,23 @@ const Dash = () => {
     }
   }, [user, setPaperList]);
 
-  useEffect(() => {
-    if (user._id && user.userType) {
-      getPapers();
-    }
-  }, [getPapers, user._id, user.userType]);
+  // Temporarily disable getPapers for debugging
+  // useEffect(() => {
+  //   if (user._id && user.userType) {
+  //     getPapers();
+  //   }
+  // }, [getPapers, user._id, user.userType]);
 
-  // Auto-refresh every 15 seconds
-  useEffect(() => {
-    if (user._id && user.userType) {
-      const interval = setInterval(() => {
-        getPapers();
-      }, 15000); // 15 seconds
+  // Auto-refresh disabled for debugging
+  // useEffect(() => {
+  //   if (user._id && user.userType) {
+  //     const interval = setInterval(() => {
+  //       getPapers();
+  //     }, 15000); // 15 seconds
 
-      return () => clearInterval(interval);
-    }
-  }, [getPapers, user._id, user.userType]);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [getPapers, user._id, user.userType]);
 
   return (
     <main className="self-center">
