@@ -173,17 +173,36 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Test staff model loading
+    if (path === '/test-staff-model' && req.method === 'GET') {
+      try {
+        const Staff = require('./models/Staff');
+        return res.json({ 
+          message: "Staff model loaded successfully",
+          modelName: Staff.modelName
+        });
+      } catch (error) {
+        console.error('Staff model load error:', error);
+        return res.status(500).json({ 
+          message: "Error loading Staff model", 
+          error: error.message,
+          stack: error.stack
+        });
+      }
+    }
+
     // Get all staff endpoint
     if (path === '/staff' && req.method === 'GET') {
-      const Staff = require('./models/Staff');
-      
       try {
+        const Staff = require('./models/Staff');
         const staff = await Staff.find().select('-password').lean();
         return res.json(staff);
       } catch (error) {
+        console.error('Staff fetch error:', error);
         return res.status(500).json({ 
           message: "Error fetching staff", 
-          error: error.message 
+          error: error.message,
+          stack: error.stack
         });
       }
     }
