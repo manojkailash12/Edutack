@@ -16,15 +16,23 @@ const app = express();
 
 // Connect to MongoDB (only if not already connected)
 if (mongoose.connection.readyState === 0) {
-  connectDB();
+  console.log('Connecting to MongoDB...');
+  connectDB().catch(err => {
+    console.error('MongoDB connection failed:', err);
+  });
 }
 
 // Middleware
-app.use(logger);
-app.use(cors(corsOptions));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(cookieParser());
+try {
+  app.use(logger);
+  app.use(cors(corsOptions));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  app.use(cookieParser());
+  console.log('Middleware loaded successfully');
+} catch (err) {
+  console.error('Error loading middleware:', err);
+}
 
 // Create necessary directories for serverless environment
 const createDirectories = () => {
@@ -40,27 +48,32 @@ const createDirectories = () => {
 createDirectories();
 
 // Routes
-app.use("/", require("../Backend/routes/root"));
-app.use("/auth", require("../Backend/routes/authRoutes"));
-app.use("/paper", require("../Backend/routes/paperRoutes"));
-app.use("/notes", require("../Backend/routes/notesRoutes"));
-app.use("/internal", require("../Backend/routes/internalRoutes"));
-app.use("/attendance", require("../Backend/routes/attendanceRoutes"));
-app.use("/time-schedule", require("../Backend/routes/timeScheduleRoutes"));
-app.use("/staff", require("../Backend/routes/staffRoutes"));
-app.use("/student", require("../Backend/routes/studentRoutes"));
-app.use("/users", require("../Backend/routes/userRoutes"));
-app.use("/assignments", require("../Backend/routes/assignmentRoutes"));
-app.use("/quizzes", require("../Backend/routes/quizRoutes"));
-app.use("/semester", require("../Backend/routes/semesterRoutes"));
-app.use("/feedback", require("../Backend/routes/feedbackRoutes"));
-app.use("/leave", require("../Backend/routes/leaveRoutes"));
-app.use("/staff-attendance", require("../Backend/routes/staffAttendanceRoutes"));
-app.use("/certificates", require("../Backend/routes/certificateRoutes"));
-app.use("/payslips", require("../Backend/routes/payslipRoutes"));
-app.use("/academic-calendar", require("../Backend/routes/academicCalendarRoutes"));
-app.use("/health", require("../Backend/routes/healthRoutes"));
-app.use("/otp", require("../Backend/routes/otpRoutes"));
+try {
+  app.use("/", require("../Backend/routes/root"));
+  app.use("/auth", require("../Backend/routes/authRoutes"));
+  app.use("/paper", require("../Backend/routes/paperRoutes"));
+  app.use("/notes", require("../Backend/routes/notesRoutes"));
+  app.use("/internal", require("../Backend/routes/internalRoutes"));
+  app.use("/attendance", require("../Backend/routes/attendanceRoutes"));
+  app.use("/time-schedule", require("../Backend/routes/timeScheduleRoutes"));
+  app.use("/staff", require("../Backend/routes/staffRoutes"));
+  app.use("/student", require("../Backend/routes/studentRoutes"));
+  app.use("/users", require("../Backend/routes/userRoutes"));
+  app.use("/assignments", require("../Backend/routes/assignmentRoutes"));
+  app.use("/quizzes", require("../Backend/routes/quizRoutes"));
+  app.use("/semester", require("../Backend/routes/semesterRoutes"));
+  app.use("/feedback", require("../Backend/routes/feedbackRoutes"));
+  app.use("/leave", require("../Backend/routes/leaveRoutes"));
+  app.use("/staff-attendance", require("../Backend/routes/staffAttendanceRoutes"));
+  app.use("/certificates", require("../Backend/routes/certificateRoutes"));
+  app.use("/payslips", require("../Backend/routes/payslipRoutes"));
+  app.use("/academic-calendar", require("../Backend/routes/academicCalendarRoutes"));
+  app.use("/health", require("../Backend/routes/healthRoutes"));
+  app.use("/otp", require("../Backend/routes/otpRoutes"));
+  console.log('Routes loaded successfully');
+} catch (err) {
+  console.error('Error loading routes:', err);
+}
 
 // Health check endpoint
 app.get("/health", (req, res) => {
