@@ -583,7 +583,7 @@ module.exports = async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
         const existingRecord = await StaffAttendance.findOne({
-          staff: staffId,
+          staffId: staffId,
           date: today
         });
 
@@ -592,9 +592,9 @@ module.exports = async (req, res) => {
         }
 
         const attendance = new StaffAttendance({
-          staff: staffId,
+          staffId: staffId,
           date: today,
-          checkIn: new Date(),
+          checkInTime: new Date(),
           status: 'present'
         });
 
@@ -615,7 +615,7 @@ module.exports = async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
         const attendance = await StaffAttendance.findOne({
-          staff: staffId,
+          staffId: staffId,
           date: today
         });
 
@@ -623,15 +623,15 @@ module.exports = async (req, res) => {
           return res.status(400).json({ message: 'No check-in record found for today' });
         }
 
-        if (attendance.checkOut) {
+        if (attendance.checkOutTime) {
           return res.status(400).json({ message: 'Already checked out today' });
         }
 
-        attendance.checkOut = new Date();
+        attendance.checkOutTime = new Date();
         
         // Calculate working hours
-        const checkInTime = new Date(attendance.checkIn);
-        const checkOutTime = new Date(attendance.checkOut);
+        const checkInTime = new Date(attendance.checkInTime);
+        const checkOutTime = new Date(attendance.checkOutTime);
         const workingHours = (checkOutTime - checkInTime) / (1000 * 60 * 60);
         attendance.workingHours = Math.max(0, workingHours);
 
@@ -653,7 +653,7 @@ module.exports = async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
         const attendance = await StaffAttendance.findOne({
-          staff: staffId,
+          staffId: staffId,
           date: today
         });
 
@@ -672,8 +672,8 @@ module.exports = async (req, res) => {
       const staffId = path.split('/')[3];
       
       try {
-        const payslips = await Payslip.find({ staff: staffId })
-          .populate('staff', 'name employeeId')
+        const payslips = await Payslip.find({ staffId: staffId })
+          .populate('staffId', 'name employeeId')
           .sort({ month: -1, year: -1 })
           .lean();
         
