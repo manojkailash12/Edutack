@@ -392,7 +392,7 @@ module.exports = async (req, res) => {
           Staff.find({ department, role: { $in: ['teacher', 'HOD'] } }).lean(),
           Student.find({ department }).lean(),
           Paper.find({ department }).lean(),
-          Attendance.find().populate('student', 'department').lean()
+          Attendance.find().populate('paper', 'department').lean()
         ]);
 
         // Calculate section stats
