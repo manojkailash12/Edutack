@@ -1,0 +1,17 @@
+[build]
+  base = "Frontend"
+  command = "npm run build"
+  publish = "build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  REACT_APP_API_URL = "https://edutack.vercel.app"
+  REACT_APP_ENVIRONMENT = "production"
+  GENERATE_SOURCEMAP = "false"
