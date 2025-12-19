@@ -9,8 +9,7 @@
     "dev-frontend": "cd Frontend && npm start",
     "dev-backend": "cd Backend && npm run dev",
     "build-frontend": "cd Frontend && npm run build",
-    "build": "cd Frontend && npm run build",
-    "vercel-build": "cd Frontend && npm ci && npm run build"
+    "build": "cd Frontend && npm install && npm run build"
   },
   "keywords": [
     "education",
