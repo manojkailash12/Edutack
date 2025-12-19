@@ -32,21 +32,20 @@ export const UserProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Enhanced setUser function that handles localStorage (prefetching disabled for debugging)
+  // Enhanced setUser function that handles localStorage and prefetching
   const setUserWithPersistence = (userData) => {
     setUser(userData);
-    // Temporarily disable prefetching to debug login issues
-    // if (userData && userData._id) {
-    //   apiService.prefetchCommonData(userData);
-    // }
+    // Prefetch common data when user logs in
+    if (userData && userData._id) {
+      apiService.prefetchCommonData(userData);
+    }
   };
 
-  // Prefetch data when user is loaded from localStorage (disabled for debugging)
+  // Prefetch data when user is loaded from localStorage
   useEffect(() => {
-    // Temporarily disable prefetching to debug login issues
-    // if (user && user._id) {
-    //   apiService.prefetchCommonData(user);
-    // }
+    if (user && user._id) {
+      apiService.prefetchCommonData(user);
+    }
   }, [user]);
 
   return (

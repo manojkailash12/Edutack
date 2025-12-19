@@ -4,12 +4,10 @@
   "description": "Educational Management System - Full Stack Application",
   "main": "index.js",
   "scripts": {
-    "deploy-check": "node deploy-to-vercel.js",
     "install-all": "cd Frontend && npm install && cd ../Backend && npm install",
     "dev-frontend": "cd Frontend && npm start",
     "dev-backend": "cd Backend && npm run dev",
-    "build-frontend": "cd Frontend && npm run build",
-    "build": "cd Frontend && npm install && npm run build"
+    "build-frontend": "cd Frontend && npm run build"
   },
   "keywords": [
     "education",
@@ -17,8 +15,7 @@
     "system",
     "react",
     "nodejs",
-    "mongodb",
-    "netlify"
+    "mongodb"
   ],
   "author": "Your Name",
   "license": "MIT",

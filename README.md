@@ -158,9 +158,8 @@ A comprehensive full-stack educational management system built with React.js, No
 - **PDFKit** - Server-side PDF generation
 - **ExcelJS** - Excel file generation
 
-### Deployment
-- **Netlify** - Frontend and backend hosting
-- **Netlify Functions** - Serverless backend
+### Development
+- **Local Development** - Frontend and backend running locally
 - **MongoDB Atlas** - Cloud database
 
 ## 📁 **Project Structure**
@@ -178,7 +177,6 @@ Edutack/
 │   │   ├── Hooks/           # Custom React hooks
 │   │   ├── services/        # API services
 │   │   └── utils/           # Utility functions
-│   ├── netlify.toml         # Netlify configuration
 │   └── package.json
 │
 ├── Backend/                  # Node.js backend API
@@ -189,13 +187,9 @@ Edutack/
 │   ├── services/            # Business logic services
 │   ├── middleware/          # Custom middleware
 │   ├── utils/               # Utility functions
-│   ├── netlify/
-│   │   └── functions/       # Netlify serverless functions
-│   ├── netlify.toml         # Netlify configuration
 │   └── package.json
 │
-├── DEPLOYMENT_GUIDE.md      # Deployment instructions
-├── prepare-deployment.js    # Deployment preparation script
+
 └── README.md               # This file
 ```
 
@@ -253,18 +247,9 @@ npm start
 - Frontend: http://localhost:3000
 - Backend: http://localhost:3500
 
-## 📦 **Deployment**
+## 🔧 **Development Notes**
 
-### Netlify Deployment
-
-Follow the comprehensive guide in `DEPLOYMENT_GUIDE.md` for step-by-step deployment instructions.
-
-**Quick Steps:**
-1. Push code to GitHub
-2. Deploy backend to Netlify
-3. Update frontend API URL
-4. Deploy frontend to Netlify
-5. Configure environment variables
+This application is designed for local development. Make sure both frontend and backend servers are running for full functionality.
 
 ## 🎯 **Key Highlights**
 

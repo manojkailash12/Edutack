@@ -22,7 +22,7 @@ router.get("^/$|/index(.html)?", (req, res) => {
       certificates: "/certificates",
       payslips: "/payslips"
     },
-    note: "This is the backend API. Frontend is deployed separately."
+    note: "This is the backend API for local development."
   });
 });
 
@@ -46,9 +46,9 @@ router.get("/api", (req, res) => {
       staff: "/staff - Staff management",
       student: "/student - Student management"
     },
-    deployment: {
-      backend: "Railway",
-      frontend: "Netlify",
+    development: {
+      backend: "http://localhost:3500",
+      frontend: "http://localhost:3000",
       database: "MongoDB Atlas"
     }
   });

@@ -58,15 +58,12 @@ const Login = () => {
           }
         }
         
-        console.log('🔐 Attempting login with:', { userType, loginData });
         const response = await axios.post("/auth/login/" + userType, loginData);
-        console.log('✅ Login successful:', response.data);
         await setUser({ ...response.data, userType });
         localStorage.setItem(
           "userDetails",
           JSON.stringify({ ...response.data, userType })
         );
-        console.log('✅ User data saved to localStorage');
       } catch (err) {
         setError(err);
         setButtonText("Login");
