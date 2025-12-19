@@ -153,12 +153,585 @@ module.exports = async (req, res) => {
       });
     }
 
-    // For other endpoints, return 404 for now
+    // Staff departments endpoint
+    if (path === '/staff/departments' && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      const Student = require('./models/Student');
+      
+      try {
+        const staffDepartments = await Staff.distinct('department');
+        const studentDepartments = await Student.distinct('department');
+        
+        const allDepartments = [...new Set([...staffDepartments, ...studentDepartments])];
+        const departments = allDepartments
+          .filter(dept => dept && dept.trim() !== '')
+          .sort();
+
+        return res.json({
+          message: "Departments retrieved successfully",
+          departments
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching departments", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get all students endpoint
+    if (path === '/student/all' && req.method === 'GET') {
+      const Student = require('./models/Student');
+      
+      try {
+        const students = await Student.find().select('-password').lean();
+        return res.json(students);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching students", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get all staff endpoint
+    if (path === '/staff' && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      
+      try {
+        const staff = await Staff.find().select('-password').lean();
+        return res.json(staff);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching staff", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get all papers endpoint
+    if (path === '/paper/all' && req.method === 'GET') {
+      const Paper = require('./models/Paper');
+      
+      try {
+        const papers = await Paper.find().lean();
+        return res.json(papers);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching papers", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get papers for staff
+    if (path.startsWith('/paper/staff/') && req.method === 'GET') {
+      const Paper = require('./models/Paper');
+      const staffId = path.split('/')[3];
+      
+      try {
+        const papers = await Paper.find({ teacher: staffId }).lean();
+        return res.json(papers);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching staff papers", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get papers for student
+    if (path.startsWith('/paper/student/') && req.method === 'GET') {
+      const Paper = require('./models/Paper');
+      const Student = require('./models/Student');
+      const studentId = path.split('/')[3];
+      
+      try {
+        const student = await Student.findById(studentId);
+        if (!student) {
+          return res.status(404).json({ message: "Student not found" });
+        }
+        
+        const papers = await Paper.find({ 
+          department: student.department,
+          year: student.year,
+          section: student.section
+        }).lean();
+        
+        return res.json(papers);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching student papers", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Certificates dashboard endpoint
+    if (path === '/certificates/dashboard' && req.method === 'GET') {
+      const Student = require('./models/Student');
+      const ExternalMarks = require('./models/ExternalMarks');
+      
+      try {
+        const totalStudents = await Student.countDocuments();
+        const studentsWithMarks = await ExternalMarks.distinct('student');
+        const eligibleForCertificate = studentsWithMarks.length;
+        
+        return res.json({
+          totalStudents,
+          eligibleForCertificate,
+          pendingStudents: totalStudents - eligibleForCertificate,
+          generatedCertificates: 0 // This would need to be tracked separately
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching certificate dashboard data", 
+          error: error.message 
+        });
+      }
+    }
+
+    // HOD Dashboard endpoints
+    if (path.startsWith('/staff/hod-dashboard/') && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      const Student = require('./models/Student');
+      const Paper = require('./models/Paper');
+      const Internal = require('./models/Internal');
+      const Attendance = require('./models/Attendance');
+      
+      const department = decodeURIComponent(path.split('/')[3]);
+      
+      try {
+        const [teachers, students, papers, internalMarks, attendanceData] = await Promise.all([
+          Staff.find({ department, role: { $in: ['teacher', 'HOD'] } }).select('-password').lean(),
+          Student.find({ department }).lean(),
+          Paper.find({ department }).populate('teacher', 'name').lean(),
+          Internal.find().populate('student', 'name rollNo section department').populate('paper', 'paper semester department').lean(),
+          Attendance.find().populate('student', 'name rollNo section department').populate('paper', 'paper department').lean()
+        ]);
+
+        // Filter internal marks for this department
+        const departmentInternalMarks = internalMarks.filter(mark => 
+          mark.student?.department === department
+        ).map(mark => ({
+          studentId: mark.student?._id,
+          rollNo: mark.student?.rollNo,
+          studentName: mark.student?.name,
+          section: mark.student?.section,
+          paperName: mark.paper?.paper,
+          semester: mark.paper?.semester,
+          test: mark.test || 0,
+          seminar: mark.seminar || 0,
+          assignment: mark.assignment || 0,
+          attendance: mark.attendance || 0,
+          total: mark.total || 0
+        }));
+
+        // Process attendance data for this department
+        const departmentAttendance = attendanceData.filter(att => 
+          att.student?.department === department
+        );
+
+        // Calculate attendance summary
+        const attendanceSummary = {};
+        departmentAttendance.forEach(record => {
+          const key = `${record.student._id}-${record.student.rollNo}`;
+          if (!attendanceSummary[key]) {
+            attendanceSummary[key] = {
+              studentId: record.student._id,
+              rollNo: record.student.rollNo,
+              studentName: record.student.name,
+              section: record.student.section,
+              totalClasses: 0,
+              presentClasses: 0
+            };
+          }
+          attendanceSummary[key].totalClasses++;
+          if (record.status === 'present') {
+            attendanceSummary[key].presentClasses++;
+          }
+        });
+
+        const attendanceReport = Object.values(attendanceSummary).map(summary => ({
+          ...summary,
+          attendancePercentage: summary.totalClasses > 0 
+            ? Math.round((summary.presentClasses / summary.totalClasses) * 100)
+            : 0
+        }));
+
+        return res.json({
+          teachers,
+          students,
+          papers,
+          internalMarks: departmentInternalMarks,
+          attendanceData: attendanceReport
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching HOD dashboard data", 
+          error: error.message 
+        });
+      }
+    }
+
+    // HOD Summary endpoints
+    if (path.startsWith('/staff/hod-summary/') && req.method === 'GET') {
+      const Staff = require('./models/Staff');
+      const Student = require('./models/Student');
+      const Paper = require('./models/Paper');
+      const Attendance = require('./models/Attendance');
+      
+      const department = decodeURIComponent(path.split('/')[3]);
+      
+      try {
+        const [teachers, students, papers, attendanceData] = await Promise.all([
+          Staff.find({ department, role: { $in: ['teacher', 'HOD'] } }).lean(),
+          Student.find({ department }).lean(),
+          Paper.find({ department }).lean(),
+          Attendance.find().populate('student', 'department').lean()
+        ]);
+
+        // Calculate section stats
+        const sectionStats = students.reduce((acc, student) => {
+          const section = student.section || 'Unknown';
+          acc[section] = (acc[section] || 0) + 1;
+          return acc;
+        }, {});
+
+        const sectionStatsArray = Object.entries(sectionStats).map(([section, count]) => ({
+          _id: section,
+          count
+        }));
+
+        // Calculate semester stats
+        const semesterStats = papers.reduce((acc, paper) => {
+          const semester = paper.semester || 'Unknown';
+          acc[semester] = (acc[semester] || 0) + 1;
+          return acc;
+        }, {});
+
+        const semesterStatsArray = Object.entries(semesterStats).map(([semester, count]) => ({
+          _id: semester,
+          count
+        }));
+
+        // Calculate average attendance for department
+        const departmentAttendance = attendanceData.filter(att => 
+          att.student?.department === department
+        );
+
+        let totalAttendancePercentage = 0;
+        let studentCount = 0;
+
+        const attendanceSummary = {};
+        departmentAttendance.forEach(record => {
+          const studentId = record.student._id.toString();
+          if (!attendanceSummary[studentId]) {
+            attendanceSummary[studentId] = { total: 0, present: 0 };
+          }
+          attendanceSummary[studentId].total++;
+          if (record.status === 'present') {
+            attendanceSummary[studentId].present++;
+          }
+        });
+
+        Object.values(attendanceSummary).forEach(summary => {
+          if (summary.total > 0) {
+            totalAttendancePercentage += (summary.present / summary.total) * 100;
+            studentCount++;
+          }
+        });
+
+        const averageAttendance = studentCount > 0 
+          ? Math.round(totalAttendancePercentage / studentCount)
+          : 0;
+
+        return res.json({
+          totalTeachers: teachers.length,
+          totalStudents: students.length,
+          totalPapers: papers.length,
+          averageAttendance,
+          sectionStats: sectionStatsArray,
+          semesterStats: semesterStatsArray
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching HOD summary data", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Assignments endpoints
+    if (path.startsWith('/assignments/') && req.method === 'GET') {
+      const Assignment = require('./models/Assignment');
+      const paperId = path.split('/')[2];
+      
+      try {
+        const assignments = await Assignment.find({ paper: paperId }).lean();
+        return res.json(assignments);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching assignments", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Quizzes endpoints
+    if (path.startsWith('/quizzes/') && req.method === 'GET') {
+      const Quiz = require('./models/Quiz');
+      const paperId = path.split('/')[2];
+      
+      try {
+        const quizzes = await Quiz.find({ paper: paperId }).lean();
+        return res.json(quizzes);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching quizzes", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Delete assignment endpoint
+    if (path.startsWith('/assignments/') && req.method === 'DELETE') {
+      const Assignment = require('./models/Assignment');
+      const assignmentId = path.split('/')[2];
+      
+      try {
+        await Assignment.findByIdAndDelete(assignmentId);
+        return res.json({ message: 'Assignment deleted successfully' });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error deleting assignment", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Delete quiz endpoint
+    if (path.startsWith('/quizzes/') && req.method === 'DELETE') {
+      const Quiz = require('./models/Quiz');
+      const quizId = path.split('/')[2];
+      
+      try {
+        await Quiz.findByIdAndDelete(quizId);
+        return res.json({ message: 'Quiz deleted successfully' });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error deleting quiz", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Attendance paper report endpoint
+    if (path.startsWith('/attendance/paper-report/') && req.method === 'GET') {
+      const Attendance = require('./models/Attendance');
+      const paperId = path.split('/')[3];
+      
+      try {
+        const attendanceData = await Attendance.find({ paper: paperId })
+          .populate('student', 'name rollNo section')
+          .lean();
+
+        const attendanceSummary = {};
+        attendanceData.forEach(record => {
+          const key = `${record.student._id}-${record.student.rollNo}`;
+          if (!attendanceSummary[key]) {
+            attendanceSummary[key] = {
+              studentId: record.student._id,
+              rollNo: record.student.rollNo,
+              studentName: record.student.name,
+              section: record.student.section,
+              totalClasses: 0,
+              presentClasses: 0
+            };
+          }
+          attendanceSummary[key].totalClasses++;
+          if (record.status === 'present') {
+            attendanceSummary[key].presentClasses++;
+          }
+        });
+
+        const attendanceReport = Object.values(attendanceSummary).map(summary => ({
+          ...summary,
+          attendancePercentage: summary.totalClasses > 0 
+            ? Math.round((summary.presentClasses / summary.totalClasses) * 100)
+            : 0
+        }));
+
+        return res.json({ attendanceReport });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching paper attendance report", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Staff attendance endpoints
+    if (path === '/staff-attendance/check-in' && req.method === 'POST') {
+      const StaffAttendance = require('./models/StaffAttendance');
+      const { staffId } = req.body;
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const existingRecord = await StaffAttendance.findOne({
+          staff: staffId,
+          date: today
+        });
+
+        if (existingRecord) {
+          return res.status(400).json({ message: 'Already checked in today' });
+        }
+
+        const attendance = new StaffAttendance({
+          staff: staffId,
+          date: today,
+          checkIn: new Date(),
+          status: 'present'
+        });
+
+        await attendance.save();
+        return res.json({ message: 'Checked in successfully', attendance });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error checking in", 
+          error: error.message 
+        });
+      }
+    }
+
+    if (path === '/staff-attendance/check-out' && req.method === 'POST') {
+      const StaffAttendance = require('./models/StaffAttendance');
+      const { staffId } = req.body;
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const attendance = await StaffAttendance.findOne({
+          staff: staffId,
+          date: today
+        });
+
+        if (!attendance) {
+          return res.status(400).json({ message: 'No check-in record found for today' });
+        }
+
+        if (attendance.checkOut) {
+          return res.status(400).json({ message: 'Already checked out today' });
+        }
+
+        attendance.checkOut = new Date();
+        
+        // Calculate working hours
+        const checkInTime = new Date(attendance.checkIn);
+        const checkOutTime = new Date(attendance.checkOut);
+        const workingHours = (checkOutTime - checkInTime) / (1000 * 60 * 60);
+        attendance.workingHours = Math.max(0, workingHours);
+
+        await attendance.save();
+        return res.json({ message: 'Checked out successfully', attendance });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error checking out", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get staff attendance status
+    if (path.startsWith('/staff-attendance/status/') && req.method === 'GET') {
+      const StaffAttendance = require('./models/StaffAttendance');
+      const staffId = path.split('/')[3];
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const attendance = await StaffAttendance.findOne({
+          staff: staffId,
+          date: today
+        });
+
+        return res.json({ attendance });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching attendance status", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Payslip endpoints
+    if (path.startsWith('/payslips/staff/') && req.method === 'GET') {
+      const Payslip = require('./models/Payslip');
+      const staffId = path.split('/')[3];
+      
+      try {
+        const payslips = await Payslip.find({ staff: staffId })
+          .populate('staff', 'name employeeId')
+          .sort({ month: -1, year: -1 })
+          .lean();
+        
+        return res.json(payslips);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching payslips", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Certificate endpoints
+    if (path.startsWith('/certificates/student/') && req.method === 'GET') {
+      const Certificate = require('./models/Certificate');
+      const studentId = path.split('/')[3];
+      
+      try {
+        const certificates = await Certificate.find({ student: studentId })
+          .populate('student', 'name rollNo')
+          .sort({ createdAt: -1 })
+          .lean();
+        
+        return res.json(certificates);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching certificates", 
+          error: error.message 
+        });
+      }
+    }
+
+    // For other endpoints, return 404
     return res.status(404).json({
       message: 'Endpoint not found',
       path: path,
       method: req.method,
-      note: 'This is a minimal API implementation for testing'
+      availableEndpoints: [
+        'GET /',
+        'GET /health',
+        'POST /auth/login/staff',
+        'POST /auth/login/student',
+        'GET /staff/departments',
+        'GET /student/all',
+        'GET /staff',
+        'GET /paper/all',
+        'GET /paper/staff/:id',
+        'GET /paper/student/:id',
+        'GET /staff/hod-dashboard/:department',
+        'GET /staff/hod-summary/:department',
+        'GET /assignments/:paperId',
+        'GET /quizzes/:paperId',
+        'DELETE /assignments/:id',
+        'DELETE /quizzes/:id',
+        'GET /attendance/paper-report/:paperId',
+        'POST /staff-attendance/check-in',
+        'POST /staff-attendance/check-out',
+        'GET /staff-attendance/status/:staffId',
+        'GET /payslips/staff/:staffId',
+        'GET /certificates/student/:studentId',
+        'GET /certificates/dashboard'
+      ]
     });
 
   } catch (error) {
