@@ -18,10 +18,10 @@ const getBaseURL = () => {
 
 const baseURL = getBaseURL();
 
-// Log the API URL for debugging (always in production for troubleshooting)
-console.log('🔗 API Base URL:', baseURL);
-console.log('🔗 Environment:', process.env.NODE_ENV);
-console.log('🔗 REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+// Log the API URL for debugging (development only)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔗 API Base URL:', baseURL);
+}
 
 const instance = axios.create({
   baseURL,
@@ -33,34 +33,42 @@ const instance = axios.create({
   maxRedirects: 5,
 });
 
-// Request interceptor for debugging (always enabled for troubleshooting)
+// Request interceptor for debugging (development only)
 instance.interceptors.request.use(
   config => {
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    }
     return config;
   },
   error => {
-    console.error('❌ Request Error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ Request Error:', error);
+    }
     return Promise.reject(error);
   }
 );
 
-// Global error handler (always enabled for troubleshooting)
+// Global error handler (non-intrusive)
 instance.interceptors.response.use(
   response => {
-    console.log(`✅ API Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ API Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+    }
     return response;
   },
   async error => {
-    const url = error.config?.url || 'unknown';
-    const method = error.config?.method?.toUpperCase() || 'unknown';
-    
-    if (!error.response) {
-      // Network error
-      console.error(`🌐 Network Error: ${method} ${url}`, error.message);
-    } else {
-      // HTTP error
-      console.error(`❌ HTTP Error: ${error.response.status} ${method} ${url}`, error.response?.data);
+    if (process.env.NODE_ENV === 'development') {
+      const url = error.config?.url || 'unknown';
+      const method = error.config?.method?.toUpperCase() || 'unknown';
+      
+      if (!error.response) {
+        // Network error
+        console.error(`🌐 Network Error: ${method} ${url}`, error.message);
+      } else {
+        // HTTP error
+        console.error(`❌ HTTP Error: ${error.response.status} ${method} ${url}`, error.response?.data);
+      }
     }
     return Promise.reject(error);
   }
