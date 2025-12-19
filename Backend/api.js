@@ -306,49 +306,53 @@ module.exports = async (req, res) => {
           Staff.find({ department, role: { $in: ['teacher', 'HOD'] } }).select('-password').lean(),
           Student.find({ department }).lean(),
           Paper.find({ department }).populate('teacher', 'name').lean(),
-          Internal.find().populate('student', 'name rollNo section department').populate('paper', 'paper semester department').lean(),
-          Attendance.find().populate('student', 'name rollNo section department').populate('paper', 'paper department').lean()
+          Internal.find().populate('paper', 'paper semester department').lean(),
+          Attendance.find().populate('paper', 'paper department').lean()
         ]);
 
-        // Filter internal marks for this department
-        const departmentInternalMarks = internalMarks.filter(mark => 
-          mark.student?.department === department
-        ).map(mark => ({
-          studentId: mark.student?._id,
-          rollNo: mark.student?.rollNo,
-          studentName: mark.student?.name,
-          section: mark.student?.section,
-          paperName: mark.paper?.paper,
-          semester: mark.paper?.semester,
-          test: mark.test || 0,
-          seminar: mark.seminar || 0,
-          assignment: mark.assignment || 0,
-          attendance: mark.attendance || 0,
-          total: mark.total || 0
-        }));
+        // Process internal marks for this department
+        const departmentInternalMarks = [];
+        internalMarks.forEach(internal => {
+          if (internal.paper?.department === department) {
+            internal.marks.forEach(mark => {
+              departmentInternalMarks.push({
+                studentId: mark._id,
+                rollNo: mark.rollNo,
+                studentName: mark.name,
+                section: students.find(s => s._id.toString() === mark._id.toString())?.section || 'Unknown',
+                paperName: internal.paper?.paper,
+                semester: internal.paper?.semester,
+                test: mark.midMarks || 0,
+                seminar: mark.lab || 0,
+                assignment: mark.assignmentQuiz || 0,
+                attendance: mark.attendance || 0,
+                total: mark.total || 0
+              });
+            });
+          }
+        });
 
         // Process attendance data for this department
-        const departmentAttendance = attendanceData.filter(att => 
-          att.student?.department === department
-        );
-
-        // Calculate attendance summary
         const attendanceSummary = {};
-        departmentAttendance.forEach(record => {
-          const key = `${record.student._id}-${record.student.rollNo}`;
-          if (!attendanceSummary[key]) {
-            attendanceSummary[key] = {
-              studentId: record.student._id,
-              rollNo: record.student.rollNo,
-              studentName: record.student.name,
-              section: record.student.section,
-              totalClasses: 0,
-              presentClasses: 0
-            };
-          }
-          attendanceSummary[key].totalClasses++;
-          if (record.status === 'present') {
-            attendanceSummary[key].presentClasses++;
+        attendanceData.forEach(attendanceRecord => {
+          if (attendanceRecord.paper?.department === department) {
+            attendanceRecord.students.forEach(studentRecord => {
+              const key = `${studentRecord.student}-${studentRecord.rollNo}`;
+              if (!attendanceSummary[key]) {
+                attendanceSummary[key] = {
+                  studentId: studentRecord.student,
+                  rollNo: studentRecord.rollNo,
+                  studentName: studentRecord.name,
+                  section: attendanceRecord.section,
+                  totalClasses: 0,
+                  presentClasses: 0
+                };
+              }
+              attendanceSummary[key].totalClasses++;
+              if (studentRecord.status === 'present') {
+                attendanceSummary[key].presentClasses++;
+              }
+            });
           }
         });
 
@@ -416,22 +420,22 @@ module.exports = async (req, res) => {
         }));
 
         // Calculate average attendance for department
-        const departmentAttendance = attendanceData.filter(att => 
-          att.student?.department === department
-        );
-
         let totalAttendancePercentage = 0;
         let studentCount = 0;
 
         const attendanceSummary = {};
-        departmentAttendance.forEach(record => {
-          const studentId = record.student._id.toString();
-          if (!attendanceSummary[studentId]) {
-            attendanceSummary[studentId] = { total: 0, present: 0 };
-          }
-          attendanceSummary[studentId].total++;
-          if (record.status === 'present') {
-            attendanceSummary[studentId].present++;
+        attendanceData.forEach(attendanceRecord => {
+          if (attendanceRecord.paper?.department === department) {
+            attendanceRecord.students.forEach(studentRecord => {
+              const studentId = studentRecord.student.toString();
+              if (!attendanceSummary[studentId]) {
+                attendanceSummary[studentId] = { total: 0, present: 0 };
+              }
+              attendanceSummary[studentId].total++;
+              if (studentRecord.status === 'present') {
+                attendanceSummary[studentId].present++;
+              }
+            });
           }
         });
 
@@ -532,27 +536,27 @@ module.exports = async (req, res) => {
       const paperId = path.split('/')[3];
       
       try {
-        const attendanceData = await Attendance.find({ paper: paperId })
-          .populate('student', 'name rollNo section')
-          .lean();
+        const attendanceData = await Attendance.find({ paper: paperId }).lean();
 
         const attendanceSummary = {};
-        attendanceData.forEach(record => {
-          const key = `${record.student._id}-${record.student.rollNo}`;
-          if (!attendanceSummary[key]) {
-            attendanceSummary[key] = {
-              studentId: record.student._id,
-              rollNo: record.student.rollNo,
-              studentName: record.student.name,
-              section: record.student.section,
-              totalClasses: 0,
-              presentClasses: 0
-            };
-          }
-          attendanceSummary[key].totalClasses++;
-          if (record.status === 'present') {
-            attendanceSummary[key].presentClasses++;
-          }
+        attendanceData.forEach(attendanceRecord => {
+          attendanceRecord.students.forEach(studentRecord => {
+            const key = `${studentRecord.student}-${studentRecord.rollNo}`;
+            if (!attendanceSummary[key]) {
+              attendanceSummary[key] = {
+                studentId: studentRecord.student,
+                rollNo: studentRecord.rollNo,
+                studentName: studentRecord.name,
+                section: attendanceRecord.section,
+                totalClasses: 0,
+                presentClasses: 0
+              };
+            }
+            attendanceSummary[key].totalClasses++;
+            if (studentRecord.status === 'present') {
+              attendanceSummary[key].presentClasses++;
+            }
+          });
         });
 
         const attendanceReport = Object.values(attendanceSummary).map(summary => ({
