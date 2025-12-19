@@ -4,7 +4,18 @@
   "builds": [
     {
       "src": "api.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "routes/**",
+          "controllers/**",
+          "models/**",
+          "services/**",
+          "config/**",
+          "middleware/**",
+          "utils/**"
+        ]
+      }
     }
   ],
   "routes": [
@@ -12,5 +23,10 @@
       "src": "/(.*)",
       "dest": "/api.js"
     }
-  ]
+  ],
+  "functions": {
+    "api.js": {
+      "maxDuration": 30
+    }
+  }
 }
