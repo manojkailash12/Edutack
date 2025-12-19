@@ -1,7 +1,20 @@
 import axios from "axios";
 
-// Use localhost for development
-const baseURL = "http://localhost:3500";
+// Determine the base URL based on environment
+const getBaseURL = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // Check if custom API URL is provided
+    if (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim() !== '') {
+      return process.env.REACT_APP_API_URL;
+    }
+    // Fallback to localhost if no production URL is set
+    return "http://localhost:3500";
+  }
+  // Use localhost for development
+  return "http://localhost:3500";
+};
+
+const baseURL = getBaseURL();
 
 // Log the API URL for debugging (development only)
 if (process.env.NODE_ENV === 'development') {
