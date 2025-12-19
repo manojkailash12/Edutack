@@ -523,6 +523,137 @@ module.exports = async (req, res) => {
       }
     }
 
+    // Staff attendance endpoints
+    if (path === '/staff-attendance/check-in' && req.method === 'POST') {
+      const StaffAttendance = require('./models/StaffAttendance');
+      const { staffId } = req.body;
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const existingRecord = await StaffAttendance.findOne({
+          staffId: staffId,
+          date: today
+        });
+
+        if (existingRecord) {
+          return res.status(400).json({ message: 'Already checked in today' });
+        }
+
+        const attendance = new StaffAttendance({
+          staffId: staffId,
+          date: today,
+          checkInTime: new Date(),
+          status: 'present'
+        });
+
+        await attendance.save();
+        return res.json({ message: 'Checked in successfully', attendance });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error checking in", 
+          error: error.message 
+        });
+      }
+    }
+
+    if (path === '/staff-attendance/check-out' && req.method === 'POST') {
+      const StaffAttendance = require('./models/StaffAttendance');
+      const { staffId } = req.body;
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const attendance = await StaffAttendance.findOne({
+          staffId: staffId,
+          date: today
+        });
+
+        if (!attendance) {
+          return res.status(400).json({ message: 'No check-in record found for today' });
+        }
+
+        if (attendance.checkOutTime) {
+          return res.status(400).json({ message: 'Already checked out today' });
+        }
+
+        attendance.checkOutTime = new Date();
+        
+        // Calculate working hours
+        const checkInTime = new Date(attendance.checkInTime);
+        const checkOutTime = new Date(attendance.checkOutTime);
+        const workingHours = (checkOutTime - checkInTime) / (1000 * 60 * 60);
+        attendance.workingHours = Math.max(0, workingHours);
+
+        await attendance.save();
+        return res.json({ message: 'Checked out successfully', attendance });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error checking out", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Get staff attendance status
+    if (path.startsWith('/staff-attendance/status/') && req.method === 'GET') {
+      const StaffAttendance = require('./models/StaffAttendance');
+      const staffId = path.split('/')[3];
+      
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const attendance = await StaffAttendance.findOne({
+          staffId: staffId,
+          date: today
+        });
+
+        return res.json({ attendance });
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching attendance status", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Payslip endpoints
+    if (path.startsWith('/payslips/staff/') && req.method === 'GET') {
+      const Payslip = require('./models/Payslip');
+      const staffId = path.split('/')[3];
+      
+      try {
+        const payslips = await Payslip.find({ staffId: staffId })
+          .populate('staffId', 'name employeeId')
+          .sort({ month: -1, year: -1 })
+          .lean();
+        
+        return res.json(payslips);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching payslips", 
+          error: error.message 
+        });
+      }
+    }
+
+    // Certificate endpoints
+    if (path.startsWith('/certificates/student/') && req.method === 'GET') {
+      const Certificate = require('./models/Certificate');
+      const studentId = path.split('/')[3];
+      
+      try {
+        const certificates = await Certificate.find({ student: studentId })
+          .populate('student', 'name rollNo')
+          .sort({ createdAt: -1 })
+          .lean();
+        
+        return res.json(certificates);
+      } catch (error) {
+        return res.status(500).json({ 
+          message: "Error fetching certificates", 
+          error: error.message 
+        });
+      }
+    }
+
     // For other endpoints, return 404
     return res.status(404).json({
       message: 'Endpoint not found',
@@ -539,7 +670,14 @@ module.exports = async (req, res) => {
         'GET /paper/staff/:id',
         'GET /paper/student/:id',
         'GET /staff/departments',
-        '... and more via Express routes'
+        'GET /staff/hod-dashboard/:department',
+        'GET /staff/hod-summary/:department',
+        'GET /certificates/dashboard',
+        'GET /certificates/student/:id',
+        'GET /payslips/staff/:id',
+        'POST /staff-attendance/check-in',
+        'POST /staff-attendance/check-out',
+        'GET /staff-attendance/status/:id'
       ]
     });
 
